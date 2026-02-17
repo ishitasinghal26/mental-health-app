@@ -67,3 +67,7 @@ export default function App() {
     </AuthProvider>
   );
 }
+<<<<<<< HEAD
+
+=======
+>>>>>>> 15c026de024d9fe0400678d837f1f5deac47fcdc

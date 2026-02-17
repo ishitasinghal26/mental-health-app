@@ -6,7 +6,11 @@ function Footer() {
     <footer className="footer">
       <div className="footer-top">
         <div>
+<<<<<<< HEAD
           <span className="logo">MindKare</span>
+=======
+          <span className="logo">MindCare</span>
+>>>>>>> 15c026de024d9fe0400678d837f1f5deac47fcdc
           <p>Your daily mental wellness companion, powered by AI.</p>
         </div>
 

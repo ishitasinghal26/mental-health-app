@@ -52,7 +52,13 @@ function AppRoutes() {
         element={
           <div style={{ padding: 40, textAlign: "center" }}>
             <h2>404 — Page not found</h2>
+<<<<<<< HEAD
             <p>The page you're looking for doesn't exist. <a href="/">Go home</a></p>
+=======
+            <p>
+              The page you're looking for doesn't exist. <a href="/">Go home</a>
+            </p>
+>>>>>>> 15c026de024d9fe0400678d837f1f5deac47fcdc
           </div>
         }
       />
@@ -67,3 +73,7 @@ export default function App() {
     </AuthProvider>
   );
 }
+<<<<<<< HEAD
+
+=======
+>>>>>>> 15c026de024d9fe0400678d837f1f5deac47fcdc

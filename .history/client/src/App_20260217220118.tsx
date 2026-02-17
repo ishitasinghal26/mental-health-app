@@ -36,6 +36,7 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+<<<<<<< HEAD
 
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/mood" element={<ProtectedRoute><MoodPage /></ProtectedRoute>} />
@@ -47,12 +48,73 @@ function AppRoutes() {
       <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
+=======
+      <Route
+  path="/mood"
+  element={
+    <ProtectedRoute>
+      <MoodPage />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/journal"
+  element={
+    <ProtectedRoute>
+      <JournalPage />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/chatbot"
+  element={
+    <ProtectedRoute>
+      <ChatbotPage />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/activities"
+  element={
+    <ProtectedRoute>
+      <ActivitiesPage />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/profile"
+  element={
+    <ProtectedRoute>
+      <ProfilePage />
+    </ProtectedRoute>
+  }
+/>
+
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+>>>>>>> 15c026de024d9fe0400678d837f1f5deac47fcdc
       <Route
         path="*"
         element={
           <div style={{ padding: 40, textAlign: "center" }}>
             <h2>404 — Page not found</h2>
+<<<<<<< HEAD
             <p>The page you're looking for doesn't exist. <a href="/">Go home</a></p>
+=======
+            <p>
+              The page you're looking for doesn't exist. <a href="/">Go home</a>
+            </p>
+>>>>>>> 15c026de024d9fe0400678d837f1f5deac47fcdc
           </div>
         }
       />
@@ -67,3 +129,7 @@ export default function App() {
     </AuthProvider>
   );
 }
+<<<<<<< HEAD
+
+=======
+>>>>>>> 15c026de024d9fe0400678d837f1f5deac47fcdc
