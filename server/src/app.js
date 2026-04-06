@@ -13,6 +13,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/moods", moodRoutes);
 app.use("/api/journals", journalRoutes);
@@ -24,6 +25,10 @@ app.use("/api/assessment", assessmentRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ message: "API is running" });
+});
+
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found" });
 });
 
 module.exports = app;
