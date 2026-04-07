@@ -62,6 +62,11 @@ async function submitAssessment(req, res) {
           overallSeverity
         ]
       );
+      // Mark DASS as completed on the user
+      await db.query(
+        "UPDATE users SET dass_completed = TRUE WHERE id = $1",
+        [userId]
+      );
     } catch (err) {
       console.error("DB insert failed:", err.message);
     }
@@ -115,7 +120,63 @@ async function getLatestAssessment(req, res) {
   }
 }
 
+/**
+ * GET /api/assessment/full
+ * Returns the latest assessment with all score details
+ */
+async function getFullAssessment(req, res) {
+  try {
+    const userId = req.user.id;
+    const result = await db.query(
+      `SELECT * FROM assessments WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [userId]
+    );
+    if (result.rows.length === 0) {
+      return res.json({ data: null });
+    }
+    const row = result.rows[0];
+    return res.json({
+      data: {
+        depression_score: row.depression_score,
+        anxiety_score:    row.anxiety_score,
+        stress_score:     row.stress_score,
+        depression_level: row.depression_level,
+        anxiety_level:    row.anxiety_level,
+        stress_level:     row.stress_level,
+        sleep_risk:       row.sleep_risk,
+        screen_risk:      row.screen_risk,
+        stress_self:      row.stress_self,
+        overall_severity: row.overall_severity,
+        created_at:       row.created_at,
+      }
+    });
+  } catch (err) {
+    console.error("getFullAssessment error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+/**
+ * POST /api/assessment/reset
+ * Resets dass_completed so user can retake the survey
+ */
+async function resetAssessment(req, res) {
+  try {
+    const userId = req.user.id;
+    await db.query(
+      "UPDATE users SET dass_completed = FALSE WHERE id = $1",
+      [userId]
+    );
+    return res.json({ message: "Assessment reset. You can now retake the DASS survey." });
+  } catch (err) {
+    console.error("resetAssessment error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
 module.exports = {
   submitAssessment,
   getLatestAssessment,
+  getFullAssessment,
+  resetAssessment,
 };

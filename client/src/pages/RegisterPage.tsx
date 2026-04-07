@@ -1,160 +1,264 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import "../styles/LandingPage.css";
-
-const registerSchema = z
-  .object({
-    name: z.string().min(2, "Enter your full name"),
-    email: z.string().email("Enter a valid email"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
-
-type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<RegisterForm>({
-    resolver: zodResolver(registerSchema),
-  });
+  const [name, setName]           = useState("");
+  const [email, setEmail]         = useState("");
+  const [password, setPassword]   = useState("");
+  const [confirm, setConfirm]     = useState("");
+  const [showPass, setShowPass]   = useState(false);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState("");
 
-  async function onSubmit(data: RegisterForm) {
+  function validate() {
+    if (!name.trim() || name.trim().length < 2) return "Enter your full name (at least 2 characters).";
+    if (!email.trim()) return "Email is required.";
+    if (!/\S+@\S+\.\S+/.test(email)) return "Enter a valid email address.";
+    if (!password) return "Password is required.";
+    if (password.length < 6) return "Password must be at least 6 characters.";
+    if (password !== confirm) return "Passwords do not match.";
+    return "";
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const err = validate();
+    if (err) { setError(err); return; }
+    setError("");
+    setLoading(true);
     try {
-      await registerUser(data.name, data.email, data.password);
-      navigate("/dashboard");
+      await registerUser(name.trim(), email.trim(), password);
+      navigate("/assessment");
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Registration failed");
+      setError(err?.response?.data?.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div style={containerStyle}>
-      <div style={cardStyle}>
-        <h2 style={titleStyle}>Create your account</h2>
-        <p style={subtitleStyle}>
-          Start your journey toward better mental wellness.
-        </p>
+    <div style={pageWrap}>
+      <div style={card}>
+        {/* Logo */}
+        <div style={logoRow}>
+          <span style={{ fontSize: 28 }}>🧠</span>
+          <span style={logoText}>MindKare</span>
+        </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} style={formStyle}>
+        <h1 style={heading}>Create your account</h1>
+        <p style={sub}>Start your journey toward better mental wellness.</p>
+
+        <form onSubmit={handleSubmit} style={form} noValidate>
           <div>
-            <label>Full name</label>
-            <input {...register("name")} style={inputStyle} />
-            {errors.name && <p style={errorStyle}>{errors.name.message}</p>}
+            <label style={label}>Full name</label>
+            <input
+              id="register-name"
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Jane Smith"
+              style={input}
+              autoComplete="name"
+            />
           </div>
 
           <div>
-            <label>Email</label>
-            <input {...register("email")} style={inputStyle} />
-            {errors.email && <p style={errorStyle}>{errors.email.message}</p>}
+            <label style={label}>Email</label>
+            <input
+              id="register-email"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              style={input}
+              autoComplete="email"
+            />
           </div>
 
           <div>
-            <label>Password</label>
+            <label style={label}>Password</label>
             <div style={{ position: "relative" }}>
               <input
-                type={showPassword ? "text" : "password"}
-                {...register("password")}
-                style={inputStyle}
+                id="register-password"
+                type={showPass ? "text" : "password"}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Min. 6 characters"
+                style={input}
+                autoComplete="new-password"
               />
-              <span
-                style={toggleStyle}
-                onClick={() => setShowPassword(!showPassword)}
+              <button
+                type="button"
+                style={showBtn}
+                onClick={() => setShowPass(v => !v)}
               >
-                {showPassword ? "Hide" : "Show"}
-              </span>
+                {showPass ? "Hide" : "Show"}
+              </button>
             </div>
-            {errors.password && (
-              <p style={errorStyle}>{errors.password.message}</p>
-            )}
           </div>
 
           <div>
-            <label>Confirm password</label>
+            <label style={label}>Confirm password</label>
             <input
+              id="register-confirm"
               type="password"
-              {...register("confirmPassword")}
-              style={inputStyle}
+              value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              placeholder="Repeat password"
+              style={{
+                ...input,
+                borderColor: confirm && confirm !== password ? "#ef4444" : undefined,
+              }}
+              autoComplete="new-password"
             />
-            {errors.confirmPassword && (
-              <p style={errorStyle}>{errors.confirmPassword.message}</p>
+            {confirm && confirm !== password && (
+              <p style={{ color: "#ef4444", fontSize: "0.8rem", marginTop: 4 }}>Passwords do not match.</p>
             )}
           </div>
 
+          {error && <div style={errorBox}>{error}</div>}
+
           <button
+            id="register-submit"
             type="submit"
-            className="primary-btn"
-            disabled={isSubmitting}
+            style={{ ...submitBtn, opacity: loading ? 0.7 : 1 }}
+            disabled={loading}
           >
-            {isSubmitting ? "Creating account..." : "Sign up"}
+            {loading ? "Creating account…" : "Sign up →"}
           </button>
         </form>
 
-        <p style={footerTextStyle}>
+        <p style={footer}>
           Already have an account?{" "}
-          <Link to="/login" style={linkStyle}>
-            Login
-          </Link>
+          <Link to="/login" style={link}>Login</Link>
         </p>
       </div>
     </div>
   );
 }
 
-/* same styles as login page */
-const containerStyle = {
+/* ── Styles ── */
+const pageWrap: React.CSSProperties = {
   minHeight: "100vh",
+  background: "linear-gradient(135deg, #f0f4ff 0%, #fdf4ff 100%)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "#f9fafb",
+  padding: "1.5rem",
 };
 
-const cardStyle = {
+const card: React.CSSProperties = {
   width: "100%",
-  maxWidth: "460px",
+  maxWidth: 460,
   background: "white",
-  padding: "2rem",
-  borderRadius: "1rem",
-  border: "1px solid #e5e7eb",
-  boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
+  borderRadius: 24,
+  padding: "2.5rem 2rem",
+  boxShadow: "0 24px 70px rgba(99,102,241,0.13)",
 };
 
-const titleStyle = { fontSize: "1.8rem", fontWeight: 700 };
-const subtitleStyle = { color: "#6b7280", marginBottom: "1.5rem" };
-const formStyle = { display: "grid", gap: "1rem" };
+const logoRow: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.5rem",
+  marginBottom: "1.5rem",
+};
 
-const inputStyle = {
+const logoText: React.CSSProperties = {
+  fontWeight: 800,
+  fontSize: "1.2rem",
+  background: "linear-gradient(135deg,#6366f1,#a855f7)",
+  WebkitBackgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+};
+
+const heading: React.CSSProperties = {
+  fontSize: "1.65rem",
+  fontWeight: 800,
+  color: "#111827",
+  margin: "0 0 6px",
+};
+
+const sub: React.CSSProperties = {
+  color: "#6b7280",
+  fontSize: "0.95rem",
+  marginBottom: "1.75rem",
+};
+
+const form: React.CSSProperties = {
+  display: "grid",
+  gap: "1rem",
+};
+
+const label: React.CSSProperties = {
+  display: "block",
+  fontSize: "0.85rem",
+  fontWeight: 600,
+  color: "#374151",
+  marginBottom: "0.35rem",
+};
+
+const input: React.CSSProperties = {
   width: "100%",
-  padding: "0.6rem 0.75rem",
-  borderRadius: "0.5rem",
-  border: "1px solid #d1d5db",
+  padding: "0.7rem 0.9rem",
+  borderRadius: 10,
+  border: "1.5px solid #e5e7eb",
+  fontSize: "0.95rem",
+  fontFamily: "inherit",
+  boxSizing: "border-box",
+  transition: "border-color 0.15s",
 };
 
-const toggleStyle = {
+const showBtn: React.CSSProperties = {
   position: "absolute",
   right: "0.75rem",
   top: "50%",
   transform: "translateY(-50%)",
-  fontSize: "0.8rem",
-  color: "#2563eb",
+  background: "none",
+  border: "none",
+  color: "#6366f1",
+  fontWeight: 600,
+  fontSize: "0.82rem",
   cursor: "pointer",
+  padding: 0,
 };
 
-const errorStyle = { color: "#dc2626", fontSize: "0.8rem" };
-const footerTextStyle = { marginTop: "1rem", fontSize: "0.9rem" };
-const linkStyle = { color: "#2563eb", textDecoration: "none" };
+const errorBox: React.CSSProperties = {
+  background: "#fef2f2",
+  color: "#dc2626",
+  border: "1px solid #fecaca",
+  borderRadius: 10,
+  padding: "0.65rem 0.9rem",
+  fontSize: "0.88rem",
+  fontWeight: 500,
+};
+
+const submitBtn: React.CSSProperties = {
+  width: "100%",
+  padding: "0.8rem",
+  background: "linear-gradient(135deg,#6366f1,#a855f7)",
+  color: "white",
+  border: "none",
+  borderRadius: 12,
+  fontWeight: 700,
+  fontSize: "1rem",
+  cursor: "pointer",
+  transition: "opacity 0.2s",
+  marginTop: "0.25rem",
+};
+
+const footer: React.CSSProperties = {
+  textAlign: "center",
+  marginTop: "1.25rem",
+  fontSize: "0.9rem",
+  color: "#6b7280",
+};
+
+const link: React.CSSProperties = {
+  color: "#6366f1",
+  fontWeight: 700,
+  textDecoration: "none",
+};

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { loginApi, registerApi, User } from "../services/authApi";
+import { loginApi, registerApi, saveConsentApi, getMeApi, User } from "../services/authApi";
 import { setAuthToken } from "../services/apiClient";
 
 type AuthContextType = {
@@ -9,10 +9,12 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateUser: (updates: Partial<User>) => void;
+  saveConsent: (aiConsent: boolean) => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 const STORAGE_KEY = "mindkare_auth";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -69,8 +71,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthToken(null);
   }
 
+  function updateUser(updates: Partial<User>) {
+    setUser(prev => prev ? { ...prev, ...updates } : prev);
+  }
+
+  async function saveConsent(aiConsent: boolean) {
+    const data = await saveConsentApi(aiConsent);
+    setUser(data.user);
+  }
+
+  async function refreshUser() {
+    try {
+      const freshUser = await getMeApi();
+      setUser(freshUser);
+    } catch {
+      // silently fail
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser, saveConsent, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

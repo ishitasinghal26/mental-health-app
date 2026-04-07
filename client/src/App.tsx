@@ -1,6 +1,6 @@
 import React from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { useAuth } from "./context/AuthContext";
 
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
@@ -14,19 +14,50 @@ import ActivityPlayer from "./pages/ActivityPlayer";
 import ActivityResult from "./pages/ActivityResult";
 import ProfilePage from "./pages/ProfilePage";
 import HistoryPage from "./pages/HistoryPage";
+import DassAssessmentPage from "./pages/DassAssessmentPage";
+import ConsentPage from "./pages/ConsentPage";
+import TherapistsPage from "./pages/TherapistsPage";
 
-function ProtectedRoute({ children }: { children: JSX.Element }) {
+/** Must be logged in */
+function AuthOnly({ children }: { children: JSX.Element }) {
   const { token, loading } = useAuth();
   const location = useLocation();
+  if (loading) return <div className="page-loading">Loading…</div>;
+  if (!token) return <Navigate to="/login" state={{ from: location }} replace />;
+  return children;
+}
 
-  if (loading) {
-    return <div style={{ padding: 30 }}>Loading...</div>;
-  }
+/** Logged-in but must complete DASS first */
+function AssessmentRoute({ children }: { children: JSX.Element }) {
+  const { token, user, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return <div className="page-loading">Loading…</div>;
+  if (!token) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (user?.dass_completed) return <Navigate to="/consent" replace />;
+  return children;
+}
 
-  if (!token) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
+/** Logged-in + DASS done, must give consent */
+function ConsentRoute({ children }: { children: JSX.Element }) {
+  const { token, user, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return <div className="page-loading">Loading…</div>;
+  if (!token) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!user?.dass_completed) return <Navigate to="/assessment" replace />;
+  if (user?.ai_consent !== null && user?.ai_consent !== undefined)
+    return <Navigate to="/dashboard" replace />;
+  return children;
+}
 
+/** Full route: logged in + DASS done + consent given */
+function FullRoute({ children }: { children: JSX.Element }) {
+  const { token, user, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return <div className="page-loading">Loading…</div>;
+  if (!token) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!user?.dass_completed) return <Navigate to="/assessment" replace />;
+  if (user?.ai_consent === null || user?.ai_consent === undefined)
+    return <Navigate to="/consent" replace />;
   return children;
 }
 
@@ -37,15 +68,21 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/mood" element={<ProtectedRoute><MoodPage /></ProtectedRoute>} />
-      <Route path="/journal" element={<ProtectedRoute><JournalPage /></ProtectedRoute>} />
-      <Route path="/chatbot" element={<ProtectedRoute><ChatbotPage /></ProtectedRoute>} />
-      <Route path="/activities" element={<ProtectedRoute><ActivitiesPage /></ProtectedRoute>} />
-      <Route path="/activity-player" element={<ProtectedRoute><ActivityPlayer /></ProtectedRoute>} />
-      <Route path="/activity-result" element={<ProtectedRoute><ActivityResult /></ProtectedRoute>} />
-      <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      {/* Onboarding flow */}
+      <Route path="/assessment" element={<AssessmentRoute><DassAssessmentPage /></AssessmentRoute>} />
+      <Route path="/consent" element={<ConsentRoute><ConsentPage /></ConsentRoute>} />
+
+      {/* Protected app routes */}
+      <Route path="/dashboard" element={<FullRoute><DashboardPage /></FullRoute>} />
+      <Route path="/mood" element={<FullRoute><MoodPage /></FullRoute>} />
+      <Route path="/journal" element={<FullRoute><JournalPage /></FullRoute>} />
+      <Route path="/chatbot" element={<FullRoute><ChatbotPage /></FullRoute>} />
+      <Route path="/activities" element={<FullRoute><ActivitiesPage /></FullRoute>} />
+      <Route path="/activity-player" element={<FullRoute><ActivityPlayer /></FullRoute>} />
+      <Route path="/activity-result" element={<FullRoute><ActivityResult /></FullRoute>} />
+      <Route path="/history" element={<FullRoute><HistoryPage /></FullRoute>} />
+      <Route path="/profile" element={<FullRoute><ProfilePage /></FullRoute>} />
+      <Route path="/therapists" element={<FullRoute><TherapistsPage /></FullRoute>} />
 
       <Route
         path="*"
@@ -61,9 +98,5 @@ function AppRoutes() {
 }
 
 export default function App() {
-  return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
-  );
+  return <AppRoutes />;
 }
