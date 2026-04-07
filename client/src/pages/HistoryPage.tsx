@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AppNavbar from "../components/navbar/AppNavbar";
 
 type Session = {
   type: string;
@@ -18,85 +19,84 @@ export default function HistoryPage() {
 
   function averageScore() {
     if (!history.length) return 0;
-    return Math.round(
-      history.reduce((a, b) => a + b.average, 0) / history.length
-    );
+    return Math.round(history.reduce((a, b) => a + b.average, 0) / history.length);
   }
 
-  function streakDays() {
-    const days = new Set(history.map(h => new Date(h.date).toDateString()));
-    return days.size;
-  }
+  const uniqueDays = new Set(history.map((h) => new Date(h.date).toDateString())).size;
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(180deg,#020617,#0f172a,#020617)",
-        color: "white",
-        padding: "40px",
-        fontFamily: "system-ui"
-      }}
-    >
-      <h1 style={{ textAlign: "center", fontSize: 40 }}>Your Progress</h1>
+    <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
+      <AppNavbar />
+      <div style={{ maxWidth: 800, margin: "0 auto", padding: "2rem 1.5rem" }}>
+        <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#111827", marginBottom: "1.5rem" }}>
+          📊 Activity History
+        </h1>
 
-      {/* SUMMARY */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: 40,
-          marginTop: 40,
-          flexWrap: "wrap"
-        }}
-      >
-        <StatCard label="Sessions Completed" value={history.length} />
-        <StatCard label="Average Wellness" value={averageScore() + "%"} />
-        <StatCard label="Active Days" value={streakDays()} />
-      </div>
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1rem", marginBottom: "2rem" }}>
+          <StatCard label="Sessions" value={history.length} color="#6366f1" />
+          <StatCard label="Avg Wellness" value={`${averageScore()}%`} color="#a855f7" />
+          <StatCard label="Active Days" value={uniqueDays} color="#10b981" />
+        </div>
 
-      {/* SESSION LIST */}
-      <div style={{ maxWidth: 600, margin: "60px auto" }}>
-        {history.map((s, i) => (
-          <div
-            key={i}
-            style={{
-              background: "#0f172a",
-              padding: 16,
-              borderRadius: 14,
-              marginBottom: 14,
-              border: "1px solid #1f2937"
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <b>{s.title}</b>
-              <span>{s.average}%</span>
-            </div>
-
-            <div style={{ opacity: 0.6, marginTop: 6 }}>
-              {new Date(s.date).toLocaleString()}
-            </div>
+        {/* Timeline */}
+        {history.length === 0 ? (
+          <div style={empty}>
+            <div style={{ fontSize: 40 }}>🌱</div>
+            <p style={{ color: "#6b7280", marginTop: "0.75rem" }}>
+              No activity history yet. Start an activity to see your progress here!
+            </p>
           </div>
-        ))}
+        ) : (
+          <div style={{ display: "grid", gap: "0.75rem" }}>
+            {history.map((s, i) => (
+              <div key={i} style={sessionCard}>
+                <div style={sessionLeft}>
+                  <div style={sessionTitle}>{s.title}</div>
+                  <div style={sessionDate}>{new Date(s.date).toLocaleString()}</div>
+                </div>
+                <div style={{ ...sessionScore, color: s.average >= 70 ? "#10b981" : s.average >= 40 ? "#f59e0b" : "#ef4444" }}>
+                  {s.average}%
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: any }) {
+function StatCard({ label, value, color }: { label: string; value: any; color: string }) {
   return (
-    <div
-      style={{
-        background: "#0f172a",
-        padding: "24px 40px",
-        borderRadius: 18,
-        textAlign: "center",
-        border: "1px solid #1f2937"
-      }}
-    >
-      <div style={{ fontSize: 34, fontWeight: "bold" }}>{value}</div>
-      <div style={{ opacity: 0.6, marginTop: 6 }}>{label}</div>
+    <div style={{ background: "white", borderRadius: 18, padding: "1.25rem", boxShadow: "0 4px 16px rgba(0,0,0,0.05)", textAlign: "center" }}>
+      <div style={{ fontSize: "1.75rem", fontWeight: 800, color }}>{value}</div>
+      <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: 4 }}>{label}</div>
     </div>
   );
 }
 
+/* Styles */
+const empty: React.CSSProperties = {
+  background: "white",
+  borderRadius: 20,
+  padding: "3rem",
+  textAlign: "center",
+  boxShadow: "0 4px 16px rgba(0,0,0,0.05)",
+};
+
+const sessionCard: React.CSSProperties = {
+  background: "white",
+  borderRadius: 16,
+  padding: "1.1rem 1.5rem",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+  border: "1px solid #f0f0f0",
+};
+
+const sessionLeft: React.CSSProperties = { flex: 1 };
+const sessionTitle: React.CSSProperties = { fontWeight: 600, color: "#111827", fontSize: "0.95rem" };
+const sessionDate: React.CSSProperties = { fontSize: "0.8rem", color: "#9ca3af", marginTop: 2 };
+const sessionScore: React.CSSProperties = { fontSize: "1.2rem", fontWeight: 800 };

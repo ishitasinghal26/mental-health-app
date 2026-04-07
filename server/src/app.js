@@ -8,6 +8,7 @@ const activityRoutes = require("./routes/activity.routes");
 const userRoutes = require("./routes/userRoutes");
 const profileRoutes = require("./routes/profile.routes");
 const assessmentRoutes = require("./routes/assessment.routes");
+const chatbotRoutes = require("./routes/chatbot.routes");
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/assessment", assessmentRoutes);
+app.use("/api/chatbot", chatbotRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ message: "API is running" });
@@ -32,4 +34,3 @@ app.use((req, res) => {
 });
 
 module.exports = app;
-

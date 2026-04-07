@@ -1,13 +1,37 @@
 import { apiClient } from "./apiClient";
 
-export const createJournal = (data: any) =>
-  apiClient.post("/journals", data);
+export type JournalEntry = {
+  id: number;
+  user_id: number;
+  title: string;
+  content: string;
+  mood: string;
+  intensity: number;
+  tags: string[];
+  created_at: string;
+};
 
-export const getMyJournals = () =>
-  apiClient.get("/journals");
+export async function getJournals(): Promise<JournalEntry[]> {
+  const res = await apiClient.get("/journals");
+  return res.data;
+}
 
-export const deleteJournal = (id: number) =>
-  apiClient.delete(`/journals/${id}`);
+export async function createJournal(data: {
+  title: string;
+  content: string;
+  mood: string;
+  intensity: number;
+  tags: string[];
+}): Promise<JournalEntry> {
+  const res = await apiClient.post("/journals", data);
+  return res.data;
+}
 
-export const updateJournal = (id: number, data: any) =>
-  apiClient.put(`/journals/${id}`, data);
+export async function updateJournal(id: number, data: Partial<JournalEntry>): Promise<JournalEntry> {
+  const res = await apiClient.put(`/journals/${id}`, data);
+  return res.data;
+}
+
+export async function deleteJournal(id: number): Promise<void> {
+  await apiClient.delete(`/journals/${id}`);
+}
