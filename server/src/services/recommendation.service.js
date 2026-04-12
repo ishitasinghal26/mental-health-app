@@ -1,32 +1,45 @@
-function generateRecommendations(profile) {
+function generateRecommendations(profile, context) {
   const recs = [];
 
-  if (
-    profile.depression === "moderate" ||
-    profile.depression === "severe" ||
-    profile.depression === "extremely_severe"
-  ) {
-    recs.push("Journaling");
-    recs.push("Gratitude Practice");
+  const isHigh = (val) =>
+    ["moderate", "severe", "extremely_severe"].includes(val);
+
+  if (isHigh(profile.depression)) {
+    recs.push({
+      name: "Journaling",
+      reason: "Helps process emotions and reduce overthinking"
+    });
   }
 
-  if (
-    profile.anxiety === "moderate" ||
-    profile.anxiety === "severe" ||
-    profile.anxiety === "extremely_severe"
-  ) {
-    recs.push("Breathing Exercises");
+  if (isHigh(profile.anxiety)) {
+    recs.push({
+      name: "Breathing Exercises",
+      reason: "Calms nervous system and reduces anxiety instantly"
+    });
   }
 
-  if (profile.sleepRisk === "high") {
-    recs.push("Sleep Routine");
+  if (isHigh(profile.stress)) {
+    recs.push({
+      name: "Meditation",
+      reason: "Helps relax mind and reduce stress"
+    });
   }
 
-  if (profile.screenRisk === "high") {
-    recs.push("Digital Detox");
+  if (context?.recentMoods?.some(m => m.mood === "stressed")) {
+    recs.push({
+      name: "5-4-3-2-1 Grounding",
+      reason: "Helps reduce immediate stress"
+    });
   }
 
-  return [...new Set(recs)];
+  if (!context?.recentActivities || context.recentActivities.length === 0) {
+    recs.push({
+      name: "Start with Deep Breathing",
+      reason: "Easy way to begin your wellness journey"
+    });
+  }
+
+  return recs;
 }
 
 module.exports = {

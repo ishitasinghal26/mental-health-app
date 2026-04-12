@@ -11,10 +11,102 @@ function getOverallSeverity(levels) {
     .sort((a,b) => order.indexOf(b) - order.indexOf(a))[0];
 }
 
+function calculateWellnessScore(levels) {
+  const scoreMap = {
+    normal: 100,
+    mild: 75,
+    moderate: 50,
+    severe: 25,
+    extremely_severe: 10
+  };
+
+  return Math.round(
+    (scoreMap[levels.depression] +
+     scoreMap[levels.anxiety] +
+     scoreMap[levels.stress]) / 3
+  );
+}
+
+function getPrimaryConcern(scores) {
+  return Object.keys(scores).reduce((a, b) =>
+    scores[a] > scores[b] ? a : b
+  );
+}
+
+function generateInsights(levels, context) {
+  const insights = [];
+
+  const isHigh = (level) =>
+    ["moderate", "severe", "extremely_severe"].includes(level);
+
+  if (isHigh(levels.stress)) {
+    insights.push("Your stress levels have been higher than usual lately");
+  }
+
+  if (isHigh(levels.anxiety)) {
+    insights.push("You may be experiencing frequent anxious thoughts");
+  }
+
+  if (isHigh(levels.depression)) {
+    insights.push("Your mood seems to be low and may need attention");
+  }
+
+  if (context?.recentMoods?.length > 0) {
+    insights.push("Your recent mood patterns show some fluctuations");
+  }
+
+  if (!context?.recentActivities || context.recentActivities.length === 0) {
+    insights.push("You haven’t engaged in any wellness activities recently");
+  }
+
+  if (insights.length === 0) {
+    insights.push("You are maintaining a healthy mental state, keep it up");
+  }
+
+  return insights;
+}
+
+function getJournalPrompt(levels, primaryConcern) {
+  if (primaryConcern === "stress") {
+    return "What is currently stressing you the most?";
+  }
+
+  if (primaryConcern === "anxiety") {
+    return "What thoughts are making you feel anxious today?";
+  }
+
+  if (primaryConcern === "depression") {
+    return "What has been weighing on your mind lately?";
+  }
+
+  return "What made you feel good today?";
+}
+
 async function submitAssessment(req, res) {
   try {
     const userId = req.user.id;
     const { dassAnswers, survey } = req.body;
+
+    const moodResult = await db.query(
+      "SELECT mood, intensity FROM mood_entries WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5",
+      [userId]
+    );
+
+    const journalResult = await db.query(
+      "SELECT mood FROM journal_entries WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5",
+      [userId]
+    );
+
+    const activityResult = await db.query(
+      "SELECT activity_type FROM activities WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5",
+      [userId]
+    );
+
+    const userContext = {
+      recentMoods: moodResult.rows,
+      recentJournals: journalResult.rows,
+      recentActivities: activityResult.rows
+    };
 
     const dassResult = dassService.processDASS(dassAnswers);
     const surveyResult = surveyService.processSurvey(survey);
@@ -25,9 +117,14 @@ async function submitAssessment(req, res) {
     };
 
     const recommendations =
-      recommendationService.generateRecommendations(profile);
+      recommendationService.generateRecommendations(profile, userContext);
 
     const overallSeverity = getOverallSeverity(dassResult.levels);
+    const wellnessScore = calculateWellnessScore(dassResult.levels);
+    const primaryConcern = getPrimaryConcern(dassResult.scores);
+
+    const insights = generateInsights(dassResult.levels, userContext);
+    const journalPrompt = getJournalPrompt(dassResult.levels, primaryConcern);
 
     const responseData = {
       summary: {
@@ -38,7 +135,17 @@ async function submitAssessment(req, res) {
       interpretation: dassResult.interpretation,
       lifestyle: surveyResult,
       overallSeverity,
+      wellnessScore,
+      primaryConcern,
+      insights,
       recommendations,
+      journalPrompt,
+
+      recommendedForYou: recommendations.slice(0, 3),
+      activitySuggestion: recommendations[0]?.name || "Start with Deep Breathing",
+      insightSummary: insights[0],
+
+      aiTag: "Personalized using DASS + lifestyle inputs",
     };
 
     try {
@@ -62,11 +169,12 @@ async function submitAssessment(req, res) {
           overallSeverity
         ]
       );
-      // Mark DASS as completed on the user
+
       await db.query(
         "UPDATE users SET dass_completed = TRUE WHERE id = $1",
         [userId]
       );
+
     } catch (err) {
       console.error("DB insert failed:", err.message);
     }
@@ -120,54 +228,59 @@ async function getLatestAssessment(req, res) {
   }
 }
 
-/**
- * GET /api/assessment/full
- * Returns the latest assessment with all score details
- */
 async function getFullAssessment(req, res) {
   try {
     const userId = req.user.id;
+
     const result = await db.query(
-      `SELECT * FROM assessments WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      `SELECT * FROM assessments 
+       WHERE user_id = $1 
+       ORDER BY created_at DESC 
+       LIMIT 1`,
       [userId]
     );
+
     if (result.rows.length === 0) {
       return res.json({ data: null });
     }
+
     const row = result.rows[0];
+
     return res.json({
       data: {
         depression_score: row.depression_score,
-        anxiety_score:    row.anxiety_score,
-        stress_score:     row.stress_score,
+        anxiety_score: row.anxiety_score,
+        stress_score: row.stress_score,
         depression_level: row.depression_level,
-        anxiety_level:    row.anxiety_level,
-        stress_level:     row.stress_level,
-        sleep_risk:       row.sleep_risk,
-        screen_risk:      row.screen_risk,
-        stress_self:      row.stress_self,
+        anxiety_level: row.anxiety_level,
+        stress_level: row.stress_level,
+        sleep_risk: row.sleep_risk,
+        screen_risk: row.screen_risk,
+        stress_self: row.stress_self,
         overall_severity: row.overall_severity,
-        created_at:       row.created_at,
+        created_at: row.created_at,
       }
     });
+
   } catch (err) {
     console.error("getFullAssessment error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 }
 
-/**
- * POST /api/assessment/reset
- * Resets dass_completed so user can retake the survey
- */
 async function resetAssessment(req, res) {
   try {
     const userId = req.user.id;
+
     await db.query(
       "UPDATE users SET dass_completed = FALSE WHERE id = $1",
       [userId]
     );
-    return res.json({ message: "Assessment reset. You can now retake the DASS survey." });
+
+    return res.json({
+      message: "Assessment reset. You can now retake the DASS survey."
+    });
+
   } catch (err) {
     console.error("resetAssessment error:", err);
     return res.status(500).json({ message: "Server error" });
