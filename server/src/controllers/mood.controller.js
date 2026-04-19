@@ -26,20 +26,25 @@ async function addMood(req, res) {
 }
 
 /**
- * GET /api/moods
+ * GET /api/mood  (or /api/mood?limit=N)
  */
 async function getMyMoods(req, res) {
   try {
-    const result = await db.query(
-      `SELECT * FROM mood_entries WHERE user_id = $1 ORDER BY created_at DESC`,
-      [req.user.id]
-    );
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
+
+    const query = limit
+      ? `SELECT * FROM mood_entries WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2`
+      : `SELECT * FROM mood_entries WHERE user_id = $1 ORDER BY created_at DESC`;
+
+    const params = limit ? [req.user.id, limit] : [req.user.id];
+    const result = await db.query(query, params);
     return res.json(result.rows);
   } catch (err) {
     console.error("getMyMoods error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 }
+
 
 /**
  * DELETE /api/moods/:id

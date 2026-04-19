@@ -15,12 +15,23 @@ const MOOD_COLOR: Record<string, string> = {
 };
 
 const MOOD_EMOJI: Record<string, string> = {
-  Happy: "😊",
-  Calm: "😌",
+  Happy:   "😊",
+  Calm:    "😌",
   Neutral: "😐",
-  Sad: "😔",
-  Stressed: "😰",
+  Sad:     "😔",
+  Stressed:"😰",
 };
+
+const JOURNAL_FEEDBACK: Record<string, string> = {
+  Happy:    "🌟 Beautiful! Your joy is captured forever in this entry.",
+  Calm:     "🌿 Your peaceful reflections are a gift to your future self.",
+  Neutral:  "📝 Entry saved. Showing up, even on neutral days, takes strength.",
+  Sad:      "💙 Well done for writing it out. That takes courage. You’re not alone.",
+  Stressed: "🙌 You did it — getting words out of your head is the first step to relief.",
+};
+
+
+
 
 type EditState = {
   title: string;
@@ -40,6 +51,9 @@ export default function JournalPage() {
   const [filter, setFilter]       = useState<"week" | "month">("week");
   const [form, setForm]           = useState({ title: "", content: "", mood: "Neutral", intensity: 3, tags: "" });
   const [expanded, setExpanded]   = useState<number | null>(null);
+  const [toast, setToast]         = useState("");
+
+
 
   // ── Load from API ──
   useEffect(() => {
@@ -66,6 +80,8 @@ export default function JournalPage() {
       });
       setEntries(prev => [entry, ...prev]);
       setForm({ title: "", content: "", mood: "Neutral", intensity: 3, tags: "" });
+      setToast(JOURNAL_FEEDBACK[form.mood] || "📝 Entry saved!");
+      setTimeout(() => setToast(""), 4500);
     } catch {
       alert("Failed to save journal. Please try again.");
     } finally {
@@ -115,6 +131,20 @@ export default function JournalPage() {
   return (
     <div style={page}>
       <AppNavbar />
+
+      {/* Toast popup */}
+      {toast && (
+        <div className="toast-enter" style={{
+          position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)",
+          background: "white", borderRadius: 16, padding: "1rem 1.75rem",
+          boxShadow: "0 12px 40px rgba(0,0,0,0.15)", zIndex: 999,
+          fontWeight: 700, fontSize: "0.95rem", color: "#111827",
+          border: "1.5px solid #e5e7eb", maxWidth: "90vw", textAlign: "center",
+        }}>
+          {toast}
+        </div>
+      )}
+
       <div style={container}>
 
         {/* ── Header ── */}
@@ -123,7 +153,10 @@ export default function JournalPage() {
           <p style={subtitle}>Capture your thoughts, reflect on your feelings.</p>
         </div>
 
+        {/* ── 2-col form + entries ── */}
         <div style={twoCol}>
+
+
           {/* ── New Entry Form ── */}
           <div style={card}>
             <h2 style={cardTitle}>New Entry</h2>
@@ -160,13 +193,15 @@ export default function JournalPage() {
                       key={m}
                       style={{
                         ...moodBtn,
-                        ...(form.mood === m
-                          ? { border: `2px solid ${MOOD_COLOR[m]}`, background: MOOD_COLOR[m] + "15" }
-                          : {}),
+                        background: form.mood === m ? MOOD_COLOR[m] + "18" : "white",
+                        border: form.mood === m ? `2.5px solid ${MOOD_COLOR[m]}` : "1.5px solid #e5e7eb",
+                        boxShadow: form.mood === m ? `0 4px 12px ${MOOD_COLOR[m]}30` : "none",
+                        transform: form.mood === m ? "scale(1.06)" : "scale(1)",
+                        transition: "all 0.2s ease",
                       }}
                       onClick={() => setForm({ ...form, mood: m })}
                     >
-                      <span style={{ fontSize: 18 }}>{MOOD_EMOJI[m]}</span>
+                      <span className="emoji-wiggle" style={{ fontSize: 22 }}>{MOOD_EMOJI[m]}</span>
                       <span style={{ fontSize: "0.72rem", fontWeight: form.mood === m ? 700 : 500, color: form.mood === m ? MOOD_COLOR[m] : "#6b7280" }}>
                         {m}
                       </span>

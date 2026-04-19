@@ -7,6 +7,15 @@ import { getMoods, addMood, deleteMood, updateMood, MoodEntry } from "../service
 
 const MOODS = ["Happy", "Calm", "Neutral", "Sad", "Stressed"];
 
+const MOOD_FEEDBACK: Record<string, string> = {
+  Happy:    "😊 Amazing! Your happiness is contagious. Keep riding this wave!",
+  Calm:     "😌 That calm energy is beautiful. Carry it with you today.",
+  Neutral:  "😐 Feeling neutral is okay. You're steady — and that's strength.",
+  Sad:      "😔 It's okay to feel sad. You're not alone. Be gentle with yourself today.",
+  Stressed: "😰 Take a breath. Stress is temporary. Try a breathing activity to find calm.",
+};
+
+
 const MOOD_COLOR: Record<string, string> = {
   Happy: "#22c55e",
   Calm: "#3b82f6",
@@ -36,6 +45,7 @@ export default function MoodPage() {
   const [selectedMood, setSelMood]  = useState("Happy");
   const [intensity, setIntensity]   = useState(3);
   const [note, setNote]             = useState("");
+  const [toast, setToast]           = useState("");
 
   // ── Load from API ──
   useEffect(() => {
@@ -54,6 +64,9 @@ export default function MoodPage() {
       setMoods(prev => [entry, ...prev]);
       setNote("");
       setIntensity(3);
+      // Show mood-specific popup
+      setToast(MOOD_FEEDBACK[selectedMood] || "Mood logged!");
+      setTimeout(() => setToast(""), 4000);
     } catch {
       alert("Failed to save mood. Please try again.");
     } finally {
@@ -100,6 +113,21 @@ export default function MoodPage() {
   return (
     <div style={page}>
       <AppNavbar />
+
+      {/* Toast popup */}
+      {toast && (
+        <div className="toast-enter" style={{
+          position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)",
+          background: "white", borderRadius: 16, padding: "1rem 1.5rem",
+          boxShadow: "0 12px 40px rgba(0,0,0,0.15)", zIndex: 999,
+          fontWeight: 700, fontSize: "0.95rem", color: "#111827",
+          border: "1.5px solid #e5e7eb", whiteSpace: "nowrap",
+          maxWidth: "90vw", textAlign: "center",
+        }}>
+          {toast}
+        </div>
+      )}
+
       <div style={container}>
         {/* Header */}
         <div style={header}>
@@ -120,11 +148,16 @@ export default function MoodPage() {
                   key={m}
                   style={{
                     ...moodBtn,
-                    ...(selectedMood === m ? { ...moodBtnActive, borderColor: MOOD_COLOR[m], background: MOOD_COLOR[m] + "15" } : {}),
+                    background: selectedMood === m ? MOOD_COLOR[m] + "18" : "white",
+                    borderColor: selectedMood === m ? MOOD_COLOR[m] : "#e5e7eb",
+                    borderWidth: selectedMood === m ? 2.5 : 1.5,
+                    boxShadow: selectedMood === m ? `0 4px 16px ${MOOD_COLOR[m]}30` : "none",
+                    transform: selectedMood === m ? "scale(1.05)" : "scale(1)",
+                    transition: "all 0.2s ease",
                   }}
                   onClick={() => setSelMood(m)}
                 >
-                  <span style={{ fontSize: 22 }}>{MOOD_EMOJI[m]}</span>
+                  <span className="emoji-hover" style={{ fontSize: 28 }}>{MOOD_EMOJI[m]}</span>
                   <span style={{ fontSize: "0.8rem", fontWeight: selectedMood === m ? 700 : 500, color: selectedMood === m ? MOOD_COLOR[m] : "#6b7280" }}>{m}</span>
                 </button>
               ))}
