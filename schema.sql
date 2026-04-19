@@ -72,3 +72,15 @@ CREATE TABLE IF NOT EXISTS journals (
   mood VARCHAR(50),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ── Python AI Bot tables ──────────────────────────────────────
+-- Multi-conversation support for MindKare Bot (FastAPI, port 8000)
+CREATE TABLE IF NOT EXISTS conversations (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id) ON DELETE CASCADE,
+  title VARCHAR(255) DEFAULT 'New Chat',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add conversation_id to chatbot_logs if not already present
+ALTER TABLE chatbot_logs ADD COLUMN IF NOT EXISTS conversation_id INT REFERENCES conversations(id) ON DELETE SET NULL;
