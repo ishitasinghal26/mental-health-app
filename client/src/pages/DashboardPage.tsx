@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-} from "recharts";
+import { Link, useNavigate } from "react-router-dom";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useAuth } from "../context/AuthContext";
 import AppNavbar from "../components/navbar/AppNavbar";
 import { apiClient } from "../services/apiClient";
@@ -10,337 +8,27 @@ import { calculateStreak } from "../utils/streak";
 import DassReportModal from "../components/dashboard/DassReportModal";
 
 const MOTIVATIONAL_QUOTES = [
-  { q: "You don't have to be positive all the time. It's perfectly okay to feel sad, angry, or anxious. Having feelings doesn't make you a negative person.", a: "Lori Deschene" },
+  { q: "You don't have to be positive all the time. It's perfectly okay to feel sad, angry, or anxious.", a: "Lori Deschene" },
   { q: "This too shall pass. Whatever you are going through right now will not last forever.", a: "Ancient Proverb" },
   { q: "You are allowed to be both a masterpiece and a work in progress simultaneously.", a: "Sophia Bush" },
   { q: "Healing is not linear. Some days you will feel better and some days you will feel worse. And that's okay.", a: "Unknown" },
   { q: "Be gentle with yourself. You are a child of the universe, no less than the trees and the stars.", a: "Max Ehrmann" },
   { q: "Your present circumstances don't determine where you can go; they merely determine where you start.", a: "Nido Qubein" },
-  { q: "Rest is not idleness, and to lie sometimes on the grass under the trees on a summer's day, is by no means a waste of time.", a: "John Lubbock" },
+  { q: "Rest is not idleness — lying on the grass under the trees on a summer's day is by no means a waste of time.", a: "John Lubbock" },
 ];
 
-const RECOMMENDED_ACTIVITIES: Record<string, { id: number; title: string; emoji: string; reason: string; type: string }[]> = {
-  normal:  [
-    { id: 5, title: "Calm Focus Game",   emoji: "🎯", reason: "Keep your mental sharpness up",          type: "game-focus" },
-    { id: 2, title: "5-Min Meditation",  emoji: "🧘", reason: "Maintain your inner equilibrium",        type: "meditation" },
-    { id: 9, title: "3 Good Things",     emoji: "🌟", reason: "Daily gratitude builds lasting happiness", type: "three-good-things" },
-  ],
-  mild:    [
-    { id: 1, title: "Deep Breathing",    emoji: "💨", reason: "Reduces mild stress quickly",            type: "breathing" },
-    { id: 9, title: "3 Good Things",     emoji: "🌟", reason: "Reframe your focus positively",           type: "three-good-things" },
-    { id: 7, title: "Digital Detox",     emoji: "📵", reason: "Reduce digital noise for mental clarity", type: "digital-detox" },
-  ],
-  moderate:[
-    { id: 1, title: "Deep Breathing",    emoji: "💨", reason: "Immediate nervous system reset",         type: "breathing" },
-    { id: 4, title: "5-4-3-2-1 Grounding", emoji: "🌱", reason: "Break the anxiety cycle fast",         type: "grounding" },
-    { id: 8, title: "Write a Letter",    emoji: "✒️", reason: "Release what's been building inside",    type: "letter-writing" },
-  ],
-  severe:  [
-    { id: 4, title: "Grounding Exercise", emoji: "🌱", reason: "Anchor yourself to the present moment", type: "grounding" },
-    { id: 3, title: "Body Scan",          emoji: "🧘", reason: "Release deep physical tension",         type: "bodyscan" },
-    { id: 8, title: "Write a Letter",    emoji: "✒️", reason: "Get difficult feelings out safely",     type: "letter-writing" },
-  ],
-  extremely_severe: [
-    { id: 1, title: "Deep Breathing",    emoji: "💨", reason: "Start here — one breath at a time",     type: "breathing" },
-    { id: 4, title: "Grounding Exercise", emoji: "🌱", reason: "Reconnect with the present moment",     type: "grounding" },
-    { id: 3, title: "Body Scan",          emoji: "🧘", reason: "Gentle relief for overwhelming stress", type: "bodyscan" },
-  ],
+const RECOMMENDED_ACTIVITIES: Record<string, { id:number; title:string; emoji:string; reason:string; type:string }[]> = {
+  normal:          [{ id:5, title:"Calm Focus Game",    emoji:"🎯", reason:"Keep your mental sharpness up",           type:"game-focus"        }, { id:2, title:"5-Min Meditation", emoji:"🧘", reason:"Maintain your inner equilibrium",     type:"meditation"        }, { id:9, title:"3 Good Things",   emoji:"🌟", reason:"Daily gratitude builds lasting happiness", type:"three-good-things" }],
+  mild:            [{ id:1, title:"Deep Breathing",     emoji:"💨", reason:"Reduces mild stress quickly",             type:"breathing"         }, { id:9, title:"3 Good Things",   emoji:"🌟", reason:"Reframe your focus positively",       type:"three-good-things" }, { id:7, title:"Digital Detox",   emoji:"📵", reason:"Reduce digital noise",                    type:"digital-detox"     }],
+  moderate:        [{ id:1, title:"Deep Breathing",     emoji:"💨", reason:"Immediate nervous system reset",          type:"breathing"         }, { id:4, title:"5-4-3-2-1 Grounding", emoji:"🌱", reason:"Break the anxiety cycle",        type:"grounding"         }, { id:8, title:"Write a Letter",  emoji:"✒️", reason:"Release what's building inside",          type:"letter-writing"    }],
+  severe:          [{ id:4, title:"Grounding Exercise", emoji:"🌱", reason:"Anchor yourself to the present moment",   type:"grounding"         }, { id:3, title:"Body Scan",       emoji:"🧘", reason:"Release deep physical tension",       type:"bodyscan"          }, { id:8, title:"Write a Letter",  emoji:"✒️", reason:"Get difficult feelings out safely",        type:"letter-writing"    }],
+  extremely_severe:[{ id:1, title:"Deep Breathing",     emoji:"💨", reason:"Start here — one breath at a time",       type:"breathing"         }, { id:4, title:"Grounding Exercise", emoji:"🌱", reason:"Reconnect with the present",       type:"grounding"         }, { id:3, title:"Body Scan",       emoji:"🧘", reason:"Gentle relief for overwhelming stress",    type:"bodyscan"          }],
 };
 
+type AssessmentSummary = { summary:{ depression:string; anxiety:string; stress:string }; overallSeverity:string } | null;
+type Session = { type:string; title:string; average:number; date:string };
 
-type AssessmentSummary = {
-  summary: { depression: string; anxiety: string; stress: string };
-  overallSeverity: string;
-} | null;
-
-type Session = { type: string; title: string; average: number; date: string };
-
-const SEVERITY_COLOR: Record<string, string> = {
-  normal: "#10b981",
-  mild: "#f59e0b",
-  moderate: "#f97316",
-  severe: "#ef4444",
-  extremely_severe: "#7c3aed",
-};
-
-const SEVERITY_WIDTH: Record<string, string> = {
-  normal: "20%",
-  mild: "40%",
-  moderate: "60%",
-  severe: "80%",
-  extremely_severe: "100%",
-};
-
-function SeverityBar({ label, level }: { label: string; level: string }) {
-  const color = SEVERITY_COLOR[level] || "#6b7280";
-  const width = SEVERITY_WIDTH[level] || "0%";
-  const display = level?.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  return (
-    <div style={{ marginBottom: "0.9rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: 4 }}>
-        <span style={{ fontWeight: 600, color: "#374151" }}>{label}</span>
-        <span style={{ fontWeight: 700, color }}>{display}</span>
-      </div>
-      <div style={{ height: 8, background: "#e5e7eb", borderRadius: 99, overflow: "hidden" }}>
-        <div style={{ height: "100%", width, background: color, borderRadius: 99, transition: "width 0.8s ease" }} />
-      </div>
-    </div>
-  );
-}
-
-export default function DashboardPage() {
-  const { user } = useAuth();
-  const aiEnabled = user?.ai_consent === true;
-  const firstName = user?.name?.split(" ")[0] || "there";
-
-  const [assessment, setAssessment] = useState<AssessmentSummary>(null);
-  const [streak, setStreak]         = useState(0);
-  const [weeklyCount, setWeeklyCount] = useState(0);
-  const [avgWellness, setAvgWellness] = useState(0);
-  const [showReport, setShowReport]  = useState(false);
-  const [moodChart, setMoodChart]    = useState<{ date: string; intensity: number }[]>([]);
-
-  // Quote of the day (stable per calendar day)
-  const todayQuote = MOTIVATIONAL_QUOTES[new Date().getDate() % MOTIVATIONAL_QUOTES.length];
-
-  // Fetch assessment
-  useEffect(() => {
-    apiClient.get("/assessment/latest")
-      .then((res) => {
-        if (res.data?.summary) setAssessment(res.data);
-      })
-      .catch(() => {});
-  }, []);
-
-  // Local activity history stats + mood chart
-  useEffect(() => {
-    const stored = localStorage.getItem("mindcare_history");
-    if (!stored) return;
-    const history: Session[] = JSON.parse(stored);
-    if (!history.length) return;
-    setStreak(calculateStreak(history));
-    const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-    setWeeklyCount(history.filter((s) => new Date(s.date) >= weekAgo).length);
-    setAvgWellness(Math.round(history.reduce((s, h) => s + (h.average || 0), 0) / history.length));
-  }, []);
-
-  // Load mood chart data (last 7 mood entries)
-  useEffect(() => {
-    apiClient.get("/moods?limit=7")
-      .then(res => {
-        const entries = (res.data || []).slice().reverse();
-        setMoodChart(entries.map((m: any) => ({
-          date: new Date(m.created_at).toLocaleDateString("en", { month: "short", day: "numeric" }),
-          intensity: m.intensity,
-        })));
-      })
-      .catch(() => {});
-  }, []);
-
-
-
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-
-  return (
-    <>
-    <div style={page}>
-      <AppNavbar />
-      <div style={container}>
-        {/* Hero greeting + Quote combined */}
-        <div style={heroCard}>
-          <div style={{ flex: 1 }}>
-            <h1 style={heroTitle}>{greeting}, {firstName}! 👋</h1>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", marginTop: "0.85rem", padding: "0.85rem 1rem", background: "rgba(255,255,255,0.15)", borderRadius: 14 }}>
-              <span style={{ fontSize: 18, flexShrink: 0 }}>💬</span>
-              <div>
-                <p style={{ fontStyle: "italic", color: "rgba(255,255,255,0.9)", lineHeight: 1.6, margin: 0, fontSize: "0.88rem" }}>
-                  "{todayQuote.q}"
-                </p>
-                <p style={{ fontSize: "0.74rem", color: "rgba(255,255,255,0.6)", marginTop: "0.3rem" }}>— {todayQuote.a}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-
-        {/* Stats row */}
-        <div style={statsGrid}>
-          <StatCard icon="🔥" label="Current Streak" value={`${streak} days`} color="#6366f1" />
-          <StatCard icon="📅" label="This Week" value={`${weeklyCount} sessions`} color="#a855f7" />
-          <StatCard icon="📊" label="Avg Wellness" value={`${avgWellness}%`} color="#10b981" />
-          <StatCard icon="🤖" label="Mode" value={aiEnabled ? "AI Enabled" : "Private"} color={aiEnabled ? "#6366f1" : "#10b981"} />
-        </div>
-
-        {/* Journal Prompt Card */}
-        <JournalPromptCard />
-
-        <div style={twoCol}>
-          {/* DASS Summary */}
-          {assessment && (
-            <div style={panelCard}>
-              <div style={panelHeader}>
-                <span style={panelIcon}>🧠</span>
-                <div style={{ flex: 1 }}>
-                  <h2 style={panelTitle}>Your DASS-21 Results</h2>
-                  <p style={panelSub}>Overall: <strong style={{ color: SEVERITY_COLOR[assessment.overallSeverity] }}>
-                    {assessment.overallSeverity?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
-                  </strong></p>
-                </div>
-              </div>
-              <SeverityBar label="Depression" level={assessment.summary.depression} />
-              <SeverityBar label="Anxiety"    level={assessment.summary.anxiety} />
-              <SeverityBar label="Stress"     level={assessment.summary.stress} />
-              <div style={{ display: "flex", gap: "0.6rem", marginTop: "1rem", flexWrap: "wrap" }}>
-                <button
-                  style={reportBtn}
-                  onClick={() => setShowReport(true)}
-                >
-                  📊 View Full Report
-                </button>
-                <button
-                  style={{ ...reportBtn, background: "#f0fdf4", color: "#065f46", border: "1.5px solid #bbf7d0" }}
-                  onClick={() => setShowReport(true)}
-                >
-                  🔄 Retake Survey
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Recommended for You (replaces Quick Links) */}
-          <div style={panelCard}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <div>
-                <h2 style={panelTitle}>⭐ Recommended for You</h2>
-                <p style={panelSub}>Tailored to your DASS results</p>
-              </div>
-              <Link to="/recommendations" style={{ fontSize: "0.82rem", color: "#6366f1", fontWeight: 700 }}>Full Report →</Link>
-            </div>
-            {assessment ? (
-              <div style={{ display: "grid", gap: "0.6rem" }}>
-                {(RECOMMENDED_ACTIVITIES[assessment.overallSeverity] || RECOMMENDED_ACTIVITIES.normal).map(act => (
-                  <Link
-                    key={act.id}
-                    to="/activity-player"
-                    state={{ activity: { id: act.id, title: act.title, type: act.type, duration: 5, difficulty: "Beginner", description: act.reason, category: "Wellness", ui: "guided" } }}
-                    style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.75rem", background: "#f9fafb", borderRadius: 12, border: "1px solid #f0f0f0", textDecoration: "none" }}
-                  >
-                    <span style={{ fontSize: 24 }}>{act.emoji}</span>
-                    <div>
-                      <div style={{ fontWeight: 700, color: "#111827", fontSize: "0.88rem" }}>{act.title}</div>
-                      <div style={{ fontSize: "0.74rem", color: "#6b7280", marginTop: 1 }}>{act.reason}</div>
-                    </div>
-                    <span style={{ marginLeft: "auto", fontSize: "0.75rem", color: "#6366f1", fontWeight: 600 }}>Start →</span>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div style={{ textAlign: "center", color: "#9ca3af", padding: "1.5rem 0", fontSize: "0.85rem" }}>
-                Complete the DASS survey to get personalised activity recommendations.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Wellness Mood Graph */}
-        <div style={panelCard}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <div>
-              <h2 style={panelTitle}>📈 Wellness Score</h2>
-              <p style={panelSub}>Mood intensity over your last 7 entries</p>
-            </div>
-            <Link to="/mood" style={{ fontSize: "0.82rem", color: "#6366f1", fontWeight: 700 }}>Log Mood →</Link>
-          </div>
-          {moodChart.length > 1 ? (
-            <div style={{ height: 180 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={moodChart}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11 }} width={28} />
-                  <Tooltip formatter={(v: any) => [`${v}/5`, "Mood Intensity"]} />
-                  <Line type="monotone" dataKey="intensity" stroke="#6366f1" strokeWidth={3}
-                    dot={{ r: 5, fill: "#6366f1" }} activeDot={{ r: 7 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div style={{ height: 120, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", flexDirection: "column", gap: "0.5rem" }}>
-              <span style={{ fontSize: 32 }}>📊</span>
-              <span style={{ fontSize: "0.85rem" }}>Log mood entries to see your wellness trend</span>
-            </div>
-          )}
-
-          {/* Recommended activity based on mood */}
-          {moodChart.length > 0 && (
-            <div style={{ marginTop: "1rem", padding: "0.75rem 1rem", background: "#f9fafb", borderRadius: 12, border: "1px solid #f0f0f0" }}>
-              <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>
-                💡 <strong>Based on your mood trend:</strong>{" "}
-                {(() => {
-                  const avg = moodChart.reduce((s, m) => s + m.intensity, 0) / moodChart.length;
-                  if (avg >= 4) return "Try a focus game or gratitude practice to stay elevated!";
-                  if (avg >= 3) return "A 5-min meditation or journaling session could help balance your mood.";
-                  if (avg >= 2) return "Try deep breathing or grounding — your body needs a reset.";
-                  return "Start with deep breathing. You're going through a tough time — be gentle with yourself.";
-                })()}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Recommended for You section moved into twoCol above */}
-
-        {/* AI Banner or Private Banner */}
-        {aiEnabled ? (
-
-          <div style={aiBanner}>
-            <div>
-              <div style={bannerTitle}>🤖 AI Insights Active</div>
-              <div style={bannerSub}>
-                Your chatbot references your DASS results and mood logs to give personalised support.
-              </div>
-            </div>
-            <Link to="/chatbot" style={bannerBtn}>Open AI Chat →</Link>
-          </div>
-        ) : (
-          <div style={privateBanner}>
-            <div>
-              <div style={bannerTitle}>🔒 Private Mode Active</div>
-              <div style={bannerSub}>
-                All your data stays on this device. You can enable AI insights anytime from your Profile.
-              </div>
-            </div>
-            <Link to="/profile" style={{ ...bannerBtn, background: "#10b981" }}>Enable AI →</Link>
-          </div>
-        )}
-      </div>
-    </div>
-
-    {/* DASS Full Report Modal */}
-    {showReport && <DassReportModal onClose={() => setShowReport(false)} />}
-    </>
-  );
-}
-
-function StatCard({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) {
-  return (
-    <div style={statCard}>
-      <div style={{ ...statIcon, background: color + "18", color }}>{icon}</div>
-      <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#111827", marginTop: "0.5rem" }}>{value}</div>
-      <div style={{ fontSize: "0.82rem", color: "#6b7280", marginTop: 2 }}>{label}</div>
-    </div>
-  );
-}
-
-function QuickLink({ to, icon, label, color }: { to: string; icon: string; label: string; color: string }) {
-  return (
-    <Link to={to} style={{ ...quickLink, color }}>
-      <span style={{ fontSize: 22 }}>{icon}</span>
-      <span style={{ fontSize: "0.82rem", fontWeight: 600 }}>{label}</span>
-    </Link>
-  );
-}
+const SEVERITY_COLOR: Record<string,string> = { normal:"#10b981", mild:"#f59e0b", moderate:"#f97316", severe:"#ef4444", extremely_severe:"#e11d48" };
 
 const JOURNAL_PROMPTS = [
   "What's been the heaviest thought on your mind lately?",
@@ -352,258 +40,315 @@ const JOURNAL_PROMPTS = [
   "What's one thing that felt hard today, and one thing that helped?",
 ];
 
-function JournalPromptCard() {
-  const [answer, setAnswer] = useState("");
-  const [saved, setSaved]   = useState(false);
-  const prompt = JOURNAL_PROMPTS[new Date().getDate() % JOURNAL_PROMPTS.length];
+export default function DashboardPage() {
+  const { user, refreshUser } = useAuth();
+  const navigate = useNavigate();
+  const aiEnabled  = user?.ai_consent === true;
+  const firstName  = user?.name?.split(" ")[0] || "there";
 
-  const textareaStyle: React.CSSProperties = {
-    width: "100%", padding: "0.65rem 0.85rem", border: "1.5px solid #d8b4fe",
-    borderRadius: 10, fontSize: "0.92rem", background: "white",
-    color: "#111827", resize: "vertical", minHeight: 80, fontFamily: "inherit",
-  };
+  const [assessment,   setAssessment]   = useState<AssessmentSummary>(null);
+  const [streak,       setStreak]       = useState(0);
+  const [moodCount,    setMoodCount]    = useState(0);
+  const [journalCount, setJournalCount] = useState(0);
+  const [avgWellness,  setAvgWellness]  = useState(0);
+  const [showReport,   setShowReport]   = useState(false);
+  const [moodChart,    setMoodChart]    = useState<{ date:string; intensity:number }[]>([]);
+  const [retaking,     setRetaking]     = useState(false);
+
+  const todayQuote = MOTIVATIONAL_QUOTES[new Date().getDate() % MOTIVATIONAL_QUOTES.length];
+
+  useEffect(() => {
+    apiClient.get("/assessment/latest")
+      .then(res => { if (res.data?.summary) setAssessment(res.data); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(`mindcare_history_${user?.id}`);
+    if (!stored) return;
+    const history: Session[] = JSON.parse(stored);
+    if (!history.length) return;
+    setStreak(calculateStreak(history));
+    setAvgWellness(Math.round(history.reduce((s,h) => s+(h.average||0), 0) / history.length));
+  }, [user?.id]);
+
+  useEffect(() => {
+    apiClient.get("/moods")
+      .then(res => {
+        const all = res.data || [];
+        setMoodCount(all.length);
+        const last7 = all.slice(0, 7).reverse();
+        setMoodChart(last7.map((m: any) => ({
+          date: new Date(m.created_at).toLocaleDateString("en", { month:"short", day:"numeric" }),
+          intensity: m.intensity,
+        })));
+        if (all.length) {
+          const moodAvg = Math.round((all.slice(0,10).reduce((s:number, m:any) => s+(m.intensity||3), 0) / Math.min(all.length, 10)) / 5 * 100);
+          setAvgWellness(prev => Math.round((prev + moodAvg) / 2));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    apiClient.get("/journals")
+      .then(res => setJournalCount((res.data||[]).length))
+      .catch(() => {});
+  }, []);
+
+  // Direct retake — resets assessment and navigates
+  async function handleRetake() {
+    if (!window.confirm("This will reset your current DASS results. You'll retake the survey. Continue?")) return;
+    setRetaking(true);
+    try {
+      await apiClient.post("/assessment/reset");
+      await refreshUser();
+      navigate("/assessment");
+    } catch {
+      alert("Failed to reset. Please try again.");
+    } finally {
+      setRetaking(false);
+    }
+  }
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div style={{
-      background: "linear-gradient(135deg,#fdf4ff,#eff6ff)",
-      border: "1.5px solid #e9d5ff", borderRadius: 20,
-      padding: "1.5rem 1.75rem",
-      boxShadow: "0 4px 16px rgba(168,85,247,0.08)",
-    }}>
-      <h2 style={{ fontSize: "1rem", fontWeight: 800, color: "#6b21a8", margin: "0 0 0.3rem" }}>
-        💥 Let it out, nobody's gonna know...
-      </h2>
-      <p style={{ fontSize: "0.84rem", color: "#7e22ce", marginBottom: "1rem" }}>{prompt}</p>
+    <>
+    <div className="min-h-screen">
+      <AppNavbar />
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 flex flex-col gap-6">
+
+        {/* Hero Card — warm peach/rose gradient */}
+        <div className="rounded-3xl p-8 text-white relative overflow-hidden"
+          style={{ background:"linear-gradient(135deg, rgba(253,164,175,0.85), rgba(249,168,212,0.78), rgba(253,186,116,0.72))", backdropFilter:"blur(20px)", border:"1px solid rgba(255,255,255,0.28)", boxShadow:"0 20px 60px rgba(253,164,175,0.35)" }}>
+          <div className="absolute top-0 right-0 w-52 h-52 rounded-full bg-white/10 -translate-y-1/2 translate-x-1/2 pointer-events-none"/>
+          <div className="absolute bottom-0 left-0 w-36 h-36 rounded-full bg-white/8 translate-y-1/2 -translate-x-1/2 pointer-events-none"/>
+          <p className="text-white/70 text-sm font-medium mb-1">{new Date().toLocaleDateString("en", { weekday:"long", month:"long", day:"numeric" })}</p>
+          <h1 className="text-3xl font-black mb-4">{greeting}, {firstName}</h1>
+          <div className="flex items-start gap-3 bg-white/18 rounded-2xl p-4 max-w-xl backdrop-blur-sm">
+            <span className="text-lg shrink-0 opacity-80">"</span>
+            <div>
+              <p className="italic text-white/92 text-sm leading-relaxed">{todayQuote.q}</p>
+              <p className="text-white/60 text-xs mt-1.5">— {todayQuote.a}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { icon:"🔥", label:"Day Streak",       value:`${streak}`, unit:"days",   grad:"from-orange-200 to-rose-200",   text:"text-orange-600" },
+            { icon:"💭", label:"Mood Entries",      value:`${moodCount}`,  unit:"total", grad:"from-pink-200 to-rose-200",     text:"text-rose-600"   },
+            { icon:"📓", label:"Journal Entries",   value:`${journalCount}`,unit:"total",grad:"from-peach-100 to-amber-100",  text:"text-amber-600"  },
+            { icon:"✨", label:"Wellness Score",    value:`${avgWellness}`,unit:"%",    grad:"from-emerald-100 to-teal-100",  text:"text-emerald-600"},
+          ].map(s => (
+            <div key={s.label} className="glass-card p-5 flex flex-col gap-2 cursor-default">
+              <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${s.grad} flex items-center justify-center text-xl shadow-sm`}>{s.icon}</div>
+              <div className="flex items-baseline gap-1">
+                <span className={`text-2xl font-black ${s.text}`}>{s.value}</span>
+                <span className="text-xs text-gray-400 font-medium">{s.unit}</span>
+              </div>
+              <div className="text-xs text-gray-500 font-medium">{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Journal Prompt */}
+        <JournalPromptCard />
+
+        {/* Two Column */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+          {/* DASS Summary */}
+          {assessment ? (
+            <div className="glass-card p-6">
+              <div className="mb-4">
+                <h2 className="font-bold text-gray-800 text-base">Mental Health Assessment</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Overall severity:{" "}
+                  <strong style={{ color:SEVERITY_COLOR[assessment.overallSeverity] }}>
+                    {assessment.overallSeverity?.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase())}
+                  </strong>
+                </p>
+              </div>
+
+              {(["depression","anxiety","stress"] as const).map(key => {
+                const level = assessment.summary[key];
+                const color = SEVERITY_COLOR[level] || "#6b7280";
+                const widths: Record<string,string> = { normal:"20%", mild:"40%", moderate:"60%", severe:"80%", extremely_severe:"100%" };
+                return (
+                  <div key={key} className="mb-3">
+                    <div className="flex justify-between text-xs mb-1.5">
+                      <span className="font-semibold text-gray-600 capitalize">{key}</span>
+                      <span className="font-bold capitalize" style={{ color }}>{level?.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase())}</span>
+                    </div>
+                    <div className="h-2 bg-white/40 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-700" style={{ width:widths[level]||"0%", background:color }}/>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className="flex gap-2 mt-5 flex-wrap">
+                <button
+                  onClick={() => setShowReport(true)}
+                  className="px-4 py-2 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer"
+                >
+                  View Full Report
+                </button>
+                <button
+                  onClick={handleRetake}
+                  disabled={retaking}
+                  className="px-4 py-2 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer disabled:opacity-60"
+                >
+                  {retaking ? "Resetting…" : "Retake Survey"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="glass-card p-6 flex flex-col items-center justify-center gap-4 text-center min-h-48">
+              <div className="text-5xl emoji-pulse">🌸</div>
+              <div>
+                <h2 className="font-bold text-gray-700 text-base">No Assessment Yet</h2>
+                <p className="text-xs text-gray-500 mt-1">Complete the DASS-21 to get personalised insights</p>
+              </div>
+              <Link to="/assessment" className="btn-primary text-sm px-5 py-2">Take Assessment</Link>
+            </div>
+          )}
+
+          {/* Recommended Activities */}
+          <div className="glass-card p-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="font-bold text-gray-800 text-base">Recommended for You</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Tailored to your results</p>
+              </div>
+              <Link to="/recommendations" className="text-xs text-rose-500 font-semibold hover:underline">See all →</Link>
+            </div>
+            {assessment ? (
+              <div className="flex flex-col gap-2">
+                {(RECOMMENDED_ACTIVITIES[assessment.overallSeverity] || RECOMMENDED_ACTIVITIES.normal).map(act => (
+                  <Link
+                    key={act.id}
+                    to="/activity-player"
+                    state={{ activity:{ id:act.id, title:act.title, type:act.type, duration:5, difficulty:"Beginner", description:act.reason, category:"Wellness", ui:"guided" } }}
+                    className="flex items-center gap-3 p-3 bg-white/30 rounded-xl border border-rose-100/40 hover:bg-white/50 hover:border-rose-200/50 transition-all group"
+                  >
+                    <span className="text-2xl emoji-bounce">{act.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-800 text-sm">{act.title}</div>
+                      <div className="text-xs text-gray-500 truncate">{act.reason}</div>
+                    </div>
+                    <span className="text-xs text-rose-400 font-semibold group-hover:translate-x-1 transition-transform shrink-0">→</span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-gray-400 py-8 text-sm">
+                Complete the DASS survey to get personalised activity suggestions.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Mood Chart */}
+        <div className="glass-card p-6">
+          <div className="flex justify-between items-center mb-5">
+            <div>
+              <h2 className="font-bold text-gray-800 text-base">Mood Trend</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Your mood intensity over the last 7 entries</p>
+            </div>
+            <Link to="/mood" className="text-xs text-rose-500 font-semibold hover:underline">Log mood →</Link>
+          </div>
+
+          {moodChart.length > 1 ? (
+            <div className="h-44">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={moodChart}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,200,210,0.4)" />
+                  <XAxis dataKey="date" tick={{ fontSize:10, fill:"#9ca3af" }} />
+                  <YAxis domain={[1,5]} ticks={[1,2,3,4,5]} tick={{ fontSize:10, fill:"#9ca3af" }} width={22} />
+                  <Tooltip formatter={(v:any) => [`${v}/5`, "Mood Intensity"]} contentStyle={{ borderRadius:12, background:"rgba(255,255,255,0.92)", border:"1px solid rgba(255,210,215,0.5)", fontSize:12 }} />
+                  <Line type="monotone" dataKey="intensity" stroke="url(#warmGrad)" strokeWidth={3} dot={{ r:5, fill:"#fda4af" }} activeDot={{ r:7 }} />
+                  <defs>
+                    <linearGradient id="warmGrad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#fda4af" />
+                      <stop offset="50%" stopColor="#f9a8d4" />
+                      <stop offset="100%" stopColor="#fdba74" />
+                    </linearGradient>
+                  </defs>
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-32 flex flex-col items-center justify-center text-gray-400 gap-2">
+              <span className="text-3xl emoji-wiggle">📊</span>
+              <span className="text-sm">Log a few mood entries to see your wellness trend</span>
+            </div>
+          )}
+
+          {moodChart.length > 0 && (
+            <div className="mt-4 bg-rose-50/60 border border-rose-100 rounded-xl p-3 text-sm text-gray-600">
+              <span className="font-semibold text-rose-600">Insight: </span>
+              {(() => {
+                const avg = moodChart.reduce((s,m) => s+m.intensity, 0) / moodChart.length;
+                if (avg >= 4) return "You're doing great — try a gratitude practice to stay elevated!";
+                if (avg >= 3) return "A 5-min meditation or journaling session could help balance your mood.";
+                if (avg >= 2) return "Try deep breathing or grounding — your body needs a gentle reset.";
+                return "Start with deep breathing. You're going through a tough time — be gentle with yourself.";
+              })()}
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+
+    {showReport && <DassReportModal onClose={() => setShowReport(false)} />}
+    </>
+  );
+}
+
+function JournalPromptCard() {
+  const today  = new Date().toISOString().slice(0, 10);
+  const LS_KEY = `mindkare_journal_prompt_${today}`;
+  const [answer, setAnswer] = useState("");
+  const [saved,  setSaved]  = useState(() => localStorage.getItem(LS_KEY) === "done");
+  const prompt = JOURNAL_PROMPTS[new Date().getDate() % JOURNAL_PROMPTS.length];
+
+  return (
+    <div className="glass-card p-6" style={{ background:"rgba(255,241,242,0.45)", borderColor:"rgba(253,164,175,0.35)" }}>
+      <div className="mb-4">
+        <p className="text-xs font-bold text-rose-400 uppercase tracking-widest mb-1">Daily Reflection</p>
+        <h2 className="font-bold text-gray-800 text-base leading-snug">{prompt}</h2>
+        <p className="text-xs text-gray-400 mt-1">No rules. No judgement. Just you.</p>
+      </div>
 
       {saved ? (
-        <div style={{ background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: 14, padding: "1rem", textAlign: "center" }}>
-          <div style={{ fontSize: 32 }}>🌸</div>
-          <div style={{ fontWeight: 700, color: "#065f46", marginTop: "0.5rem" }}>
-            Thank you for sharing. You're seen — and you matter. 💚
-          </div>
+        <div className="bg-white/50 border border-rose-100 rounded-2xl p-5 text-center">
+          <div className="text-4xl mb-2 emoji-pulse">🌸</div>
+          <div className="font-semibold text-rose-700 text-sm">Thank you for sharing. You're seen — and you matter.</div>
         </div>
       ) : (
         <>
           <textarea
             value={answer}
             onChange={e => setAnswer(e.target.value)}
-            placeholder="Write whatever comes to mind. No rules, no judgement..."
+            placeholder="Write whatever comes to mind..."
             rows={3}
-            style={textareaStyle}
+            className="glass-input resize-y min-h-[80px] text-sm"
           />
           <button
-            style={{
-              marginTop: "0.75rem", padding: "0.55rem 1.2rem", borderRadius: 12,
-              border: "none", background: "linear-gradient(135deg,#a855f7,#6366f1)",
-              color: "white", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem",
-              opacity: answer.trim() ? 1 : 0.5,
-            }}
             disabled={!answer.trim()}
-            onClick={() => { if (answer.trim()) setSaved(true); }}
+            onClick={() => { if (answer.trim()) { localStorage.setItem(LS_KEY, "done"); setSaved(true); } }}
+            className="btn-primary mt-3 px-5 py-2 text-sm"
           >
-            ✨ Done writing
+            Done writing
           </button>
         </>
       )}
     </div>
   );
 }
-
-/* ── Styles ── */
-const page: React.CSSProperties = { minHeight: "100vh", background: "#f8fafc" };
-
-const container: React.CSSProperties = {
-  maxWidth: 1100,
-  margin: "0 auto",
-  padding: "2rem 1.5rem",
-  display: "grid",
-  gap: "1.5rem",
-};
-
-const heroCard: React.CSSProperties = {
-  background: "linear-gradient(135deg,#6366f1,#a855f7)",
-  borderRadius: 24,
-  padding: "2rem 2.5rem",
-  color: "white",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  flexWrap: "wrap",
-  gap: "1rem",
-};
-
-const heroTitle: React.CSSProperties = { fontSize: "1.75rem", fontWeight: 800, margin: 0 };
-const heroSub: React.CSSProperties = { opacity: 0.85, marginTop: 6, margin: 0 };
-
-const ctaBtn: React.CSSProperties = {
-  padding: "0.7rem 1.5rem",
-  background: "white",
-  color: "#6366f1",
-  borderRadius: 12,
-  fontWeight: 700,
-  textDecoration: "none",
-  fontSize: "0.95rem",
-  flexShrink: 0,
-};
-
-const statsGrid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-  gap: "1rem",
-};
-
-const statCard: React.CSSProperties = {
-  background: "white",
-  borderRadius: 20,
-  padding: "1.5rem",
-  boxShadow: "0 4px 16px rgba(0,0,0,0.05)",
-};
-
-const statIcon: React.CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: 12,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: 22,
-};
-
-const twoCol: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-  gap: "1.25rem",
-};
-
-const panelCard: React.CSSProperties = {
-  background: "white",
-  borderRadius: 20,
-  padding: "1.75rem",
-  boxShadow: "0 4px 16px rgba(0,0,0,0.05)",
-};
-
-const panelHeader: React.CSSProperties = {
-  display: "flex",
-  gap: "1rem",
-  alignItems: "flex-start",
-  marginBottom: "1.25rem",
-};
-
-const panelIcon: React.CSSProperties = {
-  fontSize: 28,
-  marginTop: 2,
-};
-
-const panelTitle: React.CSSProperties = {
-  fontSize: "1.05rem",
-  fontWeight: 700,
-  color: "#111827",
-  margin: 0,
-};
-
-const panelSub: React.CSSProperties = {
-  fontSize: "0.82rem",
-  color: "#6b7280",
-  margin: "2px 0 0",
-};
-
-const quickLinks: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3, 1fr)",
-  gap: "0.75rem",
-  marginTop: "1.25rem",
-};
-
-const quickLink: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "0.35rem",
-  padding: "0.9rem 0.5rem",
-  background: "#f9fafb",
-  borderRadius: 14,
-  textDecoration: "none",
-  transition: "background 0.15s",
-  border: "1.5px solid #f0f0f0",
-};
-
-const aiBanner: React.CSSProperties = {
-  background: "linear-gradient(135deg,#eef2ff,#f5f3ff)",
-  border: "1.5px solid #c7d2fe",
-  borderRadius: 20,
-  padding: "1.5rem 2rem",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  flexWrap: "wrap",
-  gap: "1rem",
-};
-
-const privateBanner: React.CSSProperties = {
-  background: "#f0fdf4",
-  border: "1.5px solid #bbf7d0",
-  borderRadius: 20,
-  padding: "1.5rem 2rem",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  flexWrap: "wrap",
-  gap: "1rem",
-};
-
-const bannerTitle: React.CSSProperties = {
-  fontWeight: 700,
-  fontSize: "1rem",
-  color: "#111827",
-};
-
-const bannerSub: React.CSSProperties = {
-  fontSize: "0.85rem",
-  color: "#6b7280",
-  marginTop: 4,
-};
-
-const bannerBtn: React.CSSProperties = {
-  padding: "0.65rem 1.4rem",
-  background: "#6366f1",
-  color: "white",
-  borderRadius: 12,
-  fontWeight: 700,
-  textDecoration: "none",
-  fontSize: "0.9rem",
-  flexShrink: 0,
-};
-
-const reportBtn: React.CSSProperties = {
-  padding: "0.55rem 1.1rem",
-  borderRadius: 10,
-  border: "1.5px solid #c7d2fe",
-  background: "#eef2ff",
-  color: "#4338ca",
-  fontWeight: 700,
-  fontSize: "0.84rem",
-  cursor: "pointer",
-};
-
-const quoteCard: React.CSSProperties = {
-  background: "linear-gradient(135deg,#fafafa,#f5f3ff)",
-  border: "1px solid #e5e7eb",
-  borderRadius: 16,
-  padding: "1.1rem 1.4rem",
-  display: "flex",
-  alignItems: "flex-start",
-  gap: "0.85rem",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-};
-
-const recActCard: React.CSSProperties = {
-  background: "#f9fafb",
-  borderRadius: 16,
-  padding: "1.1rem",
-  border: "1px solid #f0f0f0",
-  display: "flex",
-  flexDirection: "column",
-  cursor: "pointer",
-  transition: "transform 0.2s, box-shadow 0.2s",
-};
-

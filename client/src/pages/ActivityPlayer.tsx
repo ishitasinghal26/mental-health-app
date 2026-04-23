@@ -1,5 +1,6 @@
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 import BreathingActivity       from "../therapies/BreathingActivity";
 import MeditationActivity      from "../therapies/MeditationActivity";
@@ -11,124 +12,89 @@ import DigitalDetoxActivity    from "../therapies/DigitalDetoxActivity";
 import LetterWritingActivity   from "../therapies/LetterWritingActivity";
 import ThreeGoodThingsActivity from "../therapies/ThreeGoodThingsActivity";
 
-type Activity = {
-  id: number;
-  title: string;
-  description: string;
-  duration: number;
-  difficulty: string;
-  category: string;
-  type: string;
-  ui: string;
-};
+type Activity = { id:number; title:string; description:string; duration:number; difficulty:string; category:string; type:string; ui:string };
+type Session   = { type:string; title:string; average:number; date:string };
 
-type Session = { type: string; title: string; average: number; date: string };
-
-const DIFFICULTY_COLOR: Record<string, string> = {
-  Beginner: "#10b981",
-  Intermediate: "#f59e0b",
-  Advanced: "#ef4444",
-};
+const DIFF_GRAD: Record<string,string> = { Beginner:"from-green-300 to-teal-300", Intermediate:"from-amber-300 to-orange-300", Advanced:"from-red-300 to-pink-300" };
 
 export default function ActivityPlayer() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const activity: Activity | undefined = location.state?.activity;
+  const navigate  = useNavigate();
+  const { user }  = useAuth();
+  const activity: Activity|undefined = location.state?.activity;
 
-  const [started, setStarted]   = useState(false);
-  const [history, setHistory]   = useState<Session[]>([]);
+  const [started, setStarted] = useState(false);
+  const [history, setHistory] = useState<Session[]>([]);
 
   useEffect(() => {
     if (!activity) { navigate("/activities"); return; }
-    // Load past sessions for this activity type from localStorage
-    const all: Session[] = JSON.parse(localStorage.getItem("mindcare_history") || "[]");
+    const all: Session[] = JSON.parse(localStorage.getItem(`mindcare_history_${user?.id}`)||"[]");
     setHistory(all.filter(s => s.type === activity.type));
   }, [activity, navigate]);
 
   if (!activity) return null;
 
-  // ── Pre-start screen ──────────────────────────────────────────────
+  // Pre-start screen
   if (!started) {
-    const avgWellness = history.length
-      ? Math.round(history.reduce((s, h) => s + (h.average || 0), 0) / history.length)
-      : null;
+    const avgWellness = history.length ? Math.round(history.reduce((s,h) => s+(h.average||0), 0)/history.length) : null;
 
     return (
-      <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
+      <div className="min-h-screen">
         {/* Back nav */}
-        <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid #e5e7eb", background: "white" }}>
-          <Link to="/activities" style={{ color: "#6366f1", fontWeight: 600, fontSize: "0.9rem", textDecoration: "none" }}>
+        <div className="sticky top-0 z-10 bg-white/20 backdrop-blur-xl border-b border-white/25 px-6 py-3">
+          <Link to="/activities" className="text-rose-500 font-semibold text-sm no-underline hover:underline">
             ← Back to Activities
           </Link>
         </div>
 
-        <div style={{ maxWidth: 640, margin: "2rem auto", padding: "0 1.5rem", display: "grid", gap: "1.5rem" }}>
-
-          {/* Activity Card */}
-          <div style={{
-            background: "linear-gradient(135deg,#6366f1,#a855f7)", color: "white",
-            borderRadius: 24, padding: "2rem",
-          }}>
-            <div style={{ fontSize: "0.8rem", fontWeight: 700, opacity: 0.8, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              {activity.category}
-            </div>
-            <h1 style={{ fontSize: "1.75rem", fontWeight: 800, margin: "0 0 0.5rem" }}>{activity.title}</h1>
-            <p style={{ opacity: 0.9, margin: "0 0 1.25rem", lineHeight: 1.5 }}>{activity.description}</p>
-            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-              <span style={{ padding: "0.3rem 0.75rem", background: "rgba(255,255,255,0.2)", borderRadius: 99, fontSize: "0.82rem", fontWeight: 600 }}>
-                ⏱ {activity.duration} min
-              </span>
-              <span style={{ padding: "0.3rem 0.75rem", background: "rgba(255,255,255,0.2)", borderRadius: 99, fontSize: "0.82rem", fontWeight: 600, color: DIFFICULTY_COLOR[activity.difficulty] || "white" }}>
-                {activity.difficulty}
-              </span>
-              {history.length > 0 && (
-                <span style={{ padding: "0.3rem 0.75rem", background: "rgba(255,255,255,0.2)", borderRadius: 99, fontSize: "0.82rem", fontWeight: 600 }}>
-                  ✓ {history.length} session{history.length > 1 ? "s" : ""} completed
-                </span>
+        <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-5 animate-fade-in">
+          {/* Hero card */}
+          <div className="rounded-3xl p-8 text-white relative overflow-hidden"
+            style={{ background:"linear-gradient(135deg,rgba(168,85,247,0.75),rgba(99,102,241,0.75))", backdropFilter:"blur(20px)", border:"1px solid rgba(255,255,255,0.25)", boxShadow:"0 20px 60px rgba(168,85,247,0.3)" }}>
+            <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/10 -translate-y-1/2 translate-x-1/2"/>
+            <p className="text-xs font-bold uppercase tracking-widest text-white/70 mb-2">{activity.category}</p>
+            <h1 className="text-3xl font-black mb-3">{activity.title}</h1>
+            <p className="text-white/85 leading-relaxed mb-5 text-sm">{activity.description}</p>
+            <div className="flex gap-2 flex-wrap">
+              <span className="px-3 py-1.5 bg-white/20 rounded-full text-xs font-semibold">⏱ {activity.duration} min</span>
+              <span className={`px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r ${DIFF_GRAD[activity.difficulty]||"from-rose-300 to-pink-300"} text-white`}>{activity.difficulty}</span>
+              {history.length>0 && (
+                <span className="px-3 py-1.5 bg-white/20 rounded-full text-xs font-semibold">✓ {history.length} session{history.length>1?"s":""} completed</span>
               )}
             </div>
           </div>
 
           {/* Stats (if history exists) */}
-          {history.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
+          {history.length>0 && (
+            <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Sessions",     value: history.length,       icon: "🎯" },
-                { label: "Avg Wellness", value: `${avgWellness}%`,    icon: "📊" },
-                { label: "Last Played",  value: new Date(history[0].date).toLocaleDateString("en", { month: "short", day: "numeric" }), icon: "📅" },
-              ].map(({ label, value, icon }) => (
-                <div key={label} style={{ background: "white", borderRadius: 18, padding: "1.1rem", boxShadow: "0 4px 16px rgba(0,0,0,0.05)", textAlign: "center" }}>
-                  <div style={{ fontSize: 22, marginBottom: "0.35rem" }}>{icon}</div>
-                  <div style={{ fontWeight: 800, fontSize: "1.2rem", color: "#111827" }}>{value}</div>
-                  <div style={{ fontSize: "0.74rem", color: "#9ca3af", marginTop: 2 }}>{label}</div>
+                {label:"Sessions",     value:history.length,     icon:"🎯"},
+                {label:"Avg Wellness", value:`${avgWellness}%`,  icon:"📊"},
+                {label:"Last Played",  value:new Date(history[0].date).toLocaleDateString("en",{month:"short",day:"numeric"}), icon:"📅"},
+              ].map(({label,value,icon})=>(
+                <div key={label} className="glass-card p-4 text-center">
+                  <div className="text-2xl mb-1">{icon}</div>
+                  <div className="font-black text-gray-800 text-lg">{value}</div>
+                  <div className="text-xs text-gray-400">{label}</div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Past sessions history */}
-          {history.length > 0 && (
-            <div style={{ background: "white", borderRadius: 20, padding: "1.5rem", boxShadow: "0 4px 16px rgba(0,0,0,0.05)" }}>
-              <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#111827", margin: "0 0 1rem" }}>📋 Your History</h2>
-              <div style={{ display: "grid", gap: "0.5rem", maxHeight: 260, overflowY: "auto" }}>
-                {history.map((s, i) => (
-                  <div key={i} style={{
-                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                    padding: "0.7rem 1rem", background: "#f9fafb", borderRadius: 12,
-                    border: "1px solid #f0f0f0",
-                  }}>
+          {/* Past sessions */}
+          {history.length>0 && (
+            <div className="glass-card p-5">
+              <h2 className="font-bold text-gray-800 text-sm mb-3">📋 Your History</h2>
+              <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+                {history.map((s,i)=>(
+                  <div key={i} className="flex justify-between items-center py-2.5 px-3 bg-white/30 rounded-xl">
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "#111827" }}>{s.title}</div>
-                      <div style={{ fontSize: "0.74rem", color: "#9ca3af", marginTop: 2 }}>
-                        {new Date(s.date).toLocaleString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      <div className="font-semibold text-gray-800 text-xs">{s.title}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        {new Date(s.date).toLocaleString("en",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}
                       </div>
                     </div>
-                    <div style={{
-                      fontWeight: 800, fontSize: "1rem",
-                      color: s.average >= 70 ? "#10b981" : s.average >= 40 ? "#f59e0b" : "#ef4444",
-                    }}>
-                      {s.average}%
-                    </div>
+                    <div className={`font-black text-base ${s.average>=70?"text-green-500":s.average>=40?"text-amber-500":"text-red-500"}`}>{s.average}%</div>
                   </div>
                 ))}
               </div>
@@ -137,39 +103,66 @@ export default function ActivityPlayer() {
 
           {/* Start button */}
           <button
-            onClick={() => setStarted(true)}
-            style={{
-              padding: "1rem", borderRadius: 16, border: "none",
-              background: "linear-gradient(135deg,#6366f1,#a855f7)",
-              color: "white", fontWeight: 800, fontSize: "1.1rem",
-              cursor: "pointer", transition: "opacity 0.2s",
-              boxShadow: "0 8px 24px rgba(99,102,241,0.35)",
-            }}
+            onClick={()=>setStarted(true)}
+            className="btn-primary w-full py-4 text-lg font-black rounded-2xl shadow-xl"
           >
-            {history.length > 0 ? "▶ Play Again" : "▶ Start Activity"}
+            {history.length>0?"▶ Play Again":"▶ Start Activity"}
           </button>
         </div>
       </div>
     );
   }
 
-  // ── Activity component ────────────────────────────────────────────
-  switch (activity.type) {
-    case "breathing":         return <BreathingActivity       activity={activity} />;
-    case "meditation":        return <MeditationActivity      activity={activity} />;
-    case "bodyscan":          return <BodyScanActivity        activity={activity} />;
-    case "grounding":         return <GroundingActivity       activity={activity} />;
-    case "game-focus":        return <FocusGame               activity={activity} />;
-    case "game-memory":       return <MemoryGame              activity={activity} />;
-    case "digital-detox":     return <DigitalDetoxActivity    activity={activity} />;
-    case "letter-writing":    return <LetterWritingActivity   activity={activity} />;
-    case "three-good-things": return <ThreeGoodThingsActivity activity={activity} />;
-    default:
-      return (
-        <div style={{ padding: 40, textAlign: "center" }}>
-          <p>Unknown activity type: {activity.type}</p>
-          <button onClick={() => navigate("/activities")}>← Back</button>
-        </div>
-      );
+  // Persistent back button overlay (rendered on top of any activity)
+  function BackBar() {
+    return (
+      <div style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999,
+        display: "flex", alignItems: "center", padding: "10px 16px",
+        background: "rgba(0,0,0,0.28)", backdropFilter: "blur(10px)",
+        borderBottom: "1px solid rgba(255,255,255,0.12)",
+      }}>
+        <button
+          onClick={() => navigate("/activities")}
+          style={{
+            background: "none", border: "none", color: "white",
+            fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 6, opacity: 0.9,
+            letterSpacing: "0.01em",
+          }}
+        >
+          ← Back to Activities
+        </button>
+      </div>
+    );
   }
+
+  function renderActivity() {
+    const act = activity!; // safe: guarded by `if (!activity) return null` above
+    switch(act.type) {
+      case "breathing":         return <BreathingActivity       activity={act}/>;
+      case "meditation":        return <MeditationActivity      activity={act}/>;
+      case "bodyscan":          return <BodyScanActivity        activity={act}/>;
+      case "grounding":         return <GroundingActivity       activity={act}/>;
+      case "game-focus":        return <FocusGame               activity={act}/>;
+      case "game-memory":       return <MemoryGame              activity={act}/>;
+      case "digital-detox":     return <DigitalDetoxActivity    activity={act}/>;
+      case "letter-writing":    return <LetterWritingActivity   activity={act}/>;
+      case "three-good-things": return <ThreeGoodThingsActivity activity={act}/>;
+      default:
+        return (
+          <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-gray-500">
+            <p>Unknown activity type: {act.type}</p>
+            <button onClick={() => navigate("/activities")} className="btn-primary px-6 py-2">← Back</button>
+          </div>
+        );
+    }
+  }
+
+  return (
+    <>
+      <BackBar />
+      {renderActivity()}
+    </>
+  );
 }

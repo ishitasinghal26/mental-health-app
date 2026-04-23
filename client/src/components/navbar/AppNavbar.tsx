@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import AppLogo from "../common/AppLogo";
 
 const NAV_LINKS = [
   { path: "/dashboard",       label: "Dashboard",       icon: "🏠" },
@@ -15,53 +16,52 @@ export default function AppNavbar() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen,   setMenuOpen]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const aiEnabled = user?.ai_consent === true;
 
-  function handleLogout() {
-    logout();
-    navigate("/");
-  }
+  function handleLogout() { logout(); navigate("/"); }
 
   const initials = user?.name
     ? user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
     : "U";
 
   return (
-    <nav style={navWrap}>
-      <div style={navInner}>
+    <nav className="sticky top-0 z-50 bg-white/15 backdrop-blur-xl border-b border-white/25 shadow-sm">
+      <div className="max-w-screen-xl mx-auto px-4 h-15 flex items-center justify-between gap-3" style={{ height: 58 }}>
+
         {/* Logo */}
-        <Link to="/dashboard" style={logo}>
-          <span style={logoIcon}>🧠</span>
-          <span style={logoText}>MindKare</span>
+        <Link to="/dashboard" className="flex items-center shrink-0 no-underline">
+          <AppLogo height={32} />
         </Link>
 
-        {/* Desktop nav links */}
-        <div style={linksRow}>
-          {NAV_LINKS.map((l) => (
-            <Link
-              key={l.path}
-              to={l.path}
-              style={{
-                ...navLink,
-                ...(location.pathname === l.path ? navLinkActive : {}),
-              }}
-            >
-              <span>{l.icon}</span>
-              <span>{l.label}</span>
-            </Link>
-          ))}
+        {/* Desktop nav */}
+        <div className="hidden md:flex items-center gap-1 flex-1 justify-center flex-wrap">
+          {NAV_LINKS.map(l => {
+            const active = location.pathname === l.path;
+            return (
+              <Link
+                key={l.path}
+                to={l.path}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium no-underline transition-all duration-200 whitespace-nowrap
+                  ${active
+                    ? "bg-white/40 backdrop-blur-sm text-rose-600 font-semibold shadow-sm border border-rose-200/40"
+                    : "text-gray-600 hover:bg-white/25 hover:text-rose-500"
+                  }`}
+              >
+                <span>{l.icon}</span>
+                <span>{l.label}</span>
+              </Link>
+            );
+          })}
           {aiEnabled && (
             <Link
               to="/chatbot"
-              style={{
-                ...navLink,
-                ...(location.pathname === "/chatbot" ? navLinkActive : {}),
-                background: location.pathname === "/chatbot" ? "#eef2ff" : "linear-gradient(135deg,#eef2ff,#fdf4ff)",
-                color: "#4338ca",
-                fontWeight: 700,
-              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold no-underline transition-all duration-200
+                ${location.pathname === "/chatbot"
+                  ? "bg-gradient-to-r from-rose-300 to-pink-300 text-white shadow-md"
+                  : "bg-white/25 text-rose-500 hover:bg-white/40 border border-rose-200/40"
+                }`}
             >
               <span>🤖</span>
               <span>AI Chat</span>
@@ -70,150 +70,86 @@ export default function AppNavbar() {
         </div>
 
         {/* Right side */}
-        <div style={rightSide}>
+        <div className="flex items-center gap-2 shrink-0">
           {/* Mode pill */}
-          <div style={{ ...modePill, ...(aiEnabled ? modePillAI : modePillPrivate) }}>
+          <span className={`hidden md:inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${
+            aiEnabled
+              ? "bg-rose-100/60 text-rose-600 border-rose-200/50"
+              : "bg-emerald-100/60 text-emerald-700 border-emerald-200/50"
+          }`}>
             {aiEnabled ? "🤖 AI mode" : "🔒 Private"}
-          </div>
+          </span>
 
           {/* Avatar dropdown */}
-          <div style={{ position: "relative" }}>
+          <div className="relative">
             <button
               id="navbar-avatar"
-              style={avatarBtn}
               onClick={() => setMenuOpen(!menuOpen)}
+              className="w-9 h-9 rounded-full bg-gradient-to-br from-rose-400 to-pink-400 text-white font-bold text-sm border-2 border-white/40 shadow-md hover:scale-105 transition-transform cursor-pointer"
             >
               {initials}
             </button>
+
             {menuOpen && (
-              <div style={dropdown} onClick={() => setMenuOpen(false)}>
-                <div style={dropdownHeader}>
-                  <div style={{ fontWeight: 700, color: "#111" }}>{user?.name}</div>
-                  <div style={{ fontSize: "0.78rem", color: "#6b7280" }}>{user?.email}</div>
+              <div
+                className="absolute top-11 right-0 glass-card-strong min-w-[200px] overflow-hidden z-50 animate-fade-in"
+                onClick={() => setMenuOpen(false)}
+              >
+                <div className="px-4 py-3 border-b border-white/20">
+                  <div className="font-bold text-gray-800 text-sm">{user?.name}</div>
+                  <div className="text-xs text-gray-500">{user?.email}</div>
                 </div>
-                <Link to="/profile" style={dropdownItem}>⚙️ Profile &amp; History</Link>
-                <Link to="/profile?tab=badges" style={dropdownItem}>🏅 My Badges</Link>
-                <button style={dropdownItemBtn} onClick={handleLogout}>🚪 Sign out</button>
+                <Link to="/profile"           className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-white/30 no-underline transition-colors">⚙️ Profile &amp; History</Link>
+                <Link to="/profile?tab=badges" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-white/30 no-underline transition-colors">🏅 My Badges</Link>
+                <button
+                  onClick={handleLogout}
+                  className="block w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50/40 transition-colors border-t border-white/20 cursor-pointer bg-transparent border-x-0 border-b-0"
+                >
+                  🚪 Sign out
+                </button>
               </div>
             )}
           </div>
 
           {/* Mobile burger */}
-          <button style={burgerBtn} onClick={() => setMobileOpen(!mobileOpen)}>☰</button>
+          <button
+            className="md:hidden bg-white/25 border border-white/30 rounded-full w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-white/40 transition-colors cursor-pointer"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            {mobileOpen ? "✕" : "☰"}
+          </button>
         </div>
       </div>
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div style={mobileMenu} onClick={() => setMobileOpen(false)}>
-          {NAV_LINKS.map((l) => (
-            <Link key={l.path} to={l.path} style={{
-              ...mobileLink,
-              ...(location.pathname === l.path ? { background: "#eef2ff", color: "#4338ca" } : {}),
-            }}>
-              {l.icon} {l.label}
+        <div
+          className="md:hidden glass-panel rounded-none border-t border-white/20 p-3 flex flex-col gap-1 animate-fade-in"
+          onClick={() => setMobileOpen(false)}
+        >
+          {NAV_LINKS.map(l => {
+            const active = location.pathname === l.path;
+            return (
+              <Link
+                key={l.path}
+                to={l.path}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium no-underline transition-all
+                  ${active ? "bg-white/40 text-rose-600 font-semibold" : "text-gray-700 hover:bg-white/30"}`}
+              >
+                {l.icon} {l.label}
+              </Link>
+            );
+          })}
+          {aiEnabled && (
+            <Link to="/chatbot" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-500 hover:bg-white/30 no-underline transition-all">
+              🤖 AI Chat
             </Link>
-          ))}
-          {aiEnabled && <Link to="/chatbot" style={{ ...mobileLink, color: "#4338ca" }}>🤖 AI Chat</Link>}
-          <Link to="/profile" style={mobileLink}>👤 Profile &amp; History</Link>
+          )}
+          <Link to="/profile" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-white/30 no-underline transition-all">
+            👤 Profile
+          </Link>
         </div>
       )}
     </nav>
   );
 }
-
-/* ── Styles ── */
-const navWrap: React.CSSProperties = {
-  position: "sticky", top: 0, zIndex: 100,
-  background: "rgba(255,255,255,0.97)",
-  backdropFilter: "blur(12px)",
-  borderBottom: "1px solid #f0f0f0",
-  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-};
-
-const navInner: React.CSSProperties = {
-  maxWidth: 1280, margin: "0 auto", padding: "0 1.25rem",
-  height: 60, display: "flex", alignItems: "center",
-  justifyContent: "space-between", gap: "0.75rem",
-};
-
-const logo: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: "0.5rem",
-  textDecoration: "none", flexShrink: 0,
-};
-
-const logoIcon: React.CSSProperties = { fontSize: 22 };
-const logoText: React.CSSProperties = {
-  fontWeight: 800, fontSize: "1.1rem",
-  background: "linear-gradient(135deg,#6366f1,#a855f7)",
-  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-};
-
-const linksRow: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: "0.15rem",
-  flex: 1, justifyContent: "center", flexWrap: "wrap",
-};
-
-const navLink: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: "0.3rem",
-  padding: "0.4rem 0.7rem", borderRadius: 10,
-  textDecoration: "none", fontSize: "0.83rem",
-  fontWeight: 500, color: "#6b7280", transition: "all 0.15s",
-  whiteSpace: "nowrap",
-};
-const navLinkActive: React.CSSProperties = {
-  background: "#eef2ff", color: "#4338ca", fontWeight: 700,
-};
-
-const rightSide: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0,
-};
-const modePill: React.CSSProperties = {
-  padding: "0.28rem 0.7rem", borderRadius: 99,
-  fontSize: "0.72rem", fontWeight: 700,
-};
-const modePillAI: React.CSSProperties = { background: "#eef2ff", color: "#4338ca" };
-const modePillPrivate: React.CSSProperties = { background: "#f0fdf4", color: "#065f46" };
-
-const avatarBtn: React.CSSProperties = {
-  width: 36, height: 36, borderRadius: "50%",
-  background: "linear-gradient(135deg,#6366f1,#a855f7)", color: "white",
-  border: "none", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer",
-  display: "flex", alignItems: "center", justifyContent: "center",
-};
-
-const burgerBtn: React.CSSProperties = {
-  display: "none", background: "none", border: "none",
-  fontSize: "1.2rem", cursor: "pointer", color: "#6b7280",
-  "@media(max-width:768px)": { display: "flex" },
-} as React.CSSProperties;
-
-const dropdown: React.CSSProperties = {
-  position: "absolute", top: "calc(100% + 8px)", right: 0,
-  background: "white", borderRadius: 16,
-  boxShadow: "0 12px 40px rgba(0,0,0,0.14)",
-  minWidth: 220, overflow: "hidden", zIndex: 200,
-  border: "1px solid #f0f0f0",
-};
-const dropdownHeader: React.CSSProperties = {
-  padding: "1rem 1.1rem 0.75rem", borderBottom: "1px solid #f5f5f5",
-};
-const dropdownItem: React.CSSProperties = {
-  display: "block", padding: "0.7rem 1.1rem",
-  fontSize: "0.9rem", color: "#374151", textDecoration: "none", cursor: "pointer",
-};
-const dropdownItemBtn: React.CSSProperties = {
-  display: "block", width: "100%", padding: "0.7rem 1.1rem",
-  fontSize: "0.9rem", color: "#dc2626", background: "none",
-  border: "none", textAlign: "left", cursor: "pointer",
-};
-
-const mobileMenu: React.CSSProperties = {
-  display: "flex", flexDirection: "column",
-  borderTop: "1px solid #f0f0f0", padding: "0.5rem",
-  background: "white",
-};
-const mobileLink: React.CSSProperties = {
-  padding: "0.75rem 1rem", borderRadius: 10, textDecoration: "none",
-  color: "#374151", fontWeight: 500, fontSize: "0.9rem",
-};

@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
 import "../../styles/LandingPage.css";
+import AppLogo from "../common/AppLogo";
 
 function Footer() {
   return (
     <footer className="footer">
       <div className="footer-top">
         <div>
-          <span className="logo">MindKare</span>
+          <AppLogo height={28} />
           <p>Your daily mental wellness companion, powered by AI.</p>
         </div>
 

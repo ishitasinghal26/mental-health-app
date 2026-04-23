@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppNavbar from "../components/navbar/AppNavbar";
+import { useAuth } from "../context/AuthContext";
 
 type Props = { activity: { id: number; title: string; duration: number; difficulty: string } };
 
@@ -19,6 +20,7 @@ const AFFIRMATIONS = [
 
 export default function ThreeGoodThingsActivity({ activity }: Props) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState(0); // 0,1,2 = prompts; 3 = summary
   const [answers, setAnswers] = useState(["", "", ""]);
   const [paused, setPaused] = useState(false);
@@ -37,9 +39,9 @@ export default function ThreeGoodThingsActivity({ activity }: Props) {
     const score = Math.min(10, filled * 3 + Math.floor(elapsed / 30));
     const pct = Math.min(100, Math.round((filled / 3) * 100));
     const entry = { type: "three-good-things", title: activity.title, average: pct, score, date: new Date().toISOString() };
-    const hist = JSON.parse(localStorage.getItem("mindcare_history") || "[]");
+    const hist = JSON.parse(localStorage.getItem(`mindcare_history_${user?.id}`) || "[]");
     hist.unshift(entry);
-    localStorage.setItem("mindcare_history", JSON.stringify(hist));
+    localStorage.setItem(`mindcare_history_${user?.id}`, JSON.stringify(hist));
     navigate("/activity-result", { state: { activity, score, average: pct } });
   }
 

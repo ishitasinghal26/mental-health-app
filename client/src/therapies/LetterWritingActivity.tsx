@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppNavbar from "../components/navbar/AppNavbar";
+import { useAuth } from "../context/AuthContext";
 
 type Props = { activity: { id: number; title: string; duration: number; difficulty: string } };
 
@@ -15,6 +16,7 @@ const PROMPTS = [
 
 export default function LetterWritingActivity({ activity }: Props) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<string[]>(new Array(PROMPTS.length).fill(""));
   const [paused, setPaused] = useState(false);
@@ -32,9 +34,9 @@ export default function LetterWritingActivity({ activity }: Props) {
     const score = Math.min(10, Math.round((filled / PROMPTS.length) * 10));
     const pct = Math.round((elapsed / totalSecs) * 100);
     const entry = { type: "letter-writing", title: activity.title, average: pct, score, date: new Date().toISOString() };
-    const hist = JSON.parse(localStorage.getItem("mindcare_history") || "[]");
+    const hist = JSON.parse(localStorage.getItem(`mindcare_history_${user?.id}`) || "[]");
     hist.unshift(entry);
-    localStorage.setItem("mindcare_history", JSON.stringify(hist));
+    localStorage.setItem(`mindcare_history_${user?.id}`, JSON.stringify(hist));
     navigate("/activity-result", { state: { activity, score, average: pct } });
   }
 
@@ -115,7 +117,7 @@ const header: React.CSSProperties = { textAlign: "center", marginBottom: "1.5rem
 const heading: React.CSSProperties = { fontSize: "1.3rem", fontWeight: 800, color: "#111827", margin: 0 };
 const subhead: React.CSSProperties = { color: "#6b7280", marginTop: 4 };
 const progressTrack: React.CSSProperties = { height: 8, background: "#e5e7eb", borderRadius: 99, overflow: "hidden" };
-const progressFill: React.CSSProperties  = { height: "100%", background: "linear-gradient(135deg,#a855f7,#ec4899)", borderRadius: 99, transition: "width 0.4s ease" };
+const progressFill: React.CSSProperties  = { height: "100%", background: "linear-gradient(135deg,#fda4af,#f9a8d4)", borderRadius: 99, transition: "width 0.4s ease" };
 const promptCard: React.CSSProperties   = { background: "#fdf4ff", borderRadius: 16, padding: "1.35rem", marginBottom: "1.25rem", border: "1px solid #e9d5ff" };
 const promptText: React.CSSProperties   = { fontWeight: 700, color: "#6b21a8", fontSize: "0.95rem", marginBottom: "0.85rem", lineHeight: 1.5 };
 const textArea: React.CSSProperties     = { width: "100%", border: "1.5px solid #e9d5ff", borderRadius: 12, padding: "0.75rem", fontSize: "0.9rem", fontFamily: "inherit", resize: "vertical", outline: "none", lineHeight: 1.6, boxSizing: "border-box", background: "white" };
@@ -123,4 +125,4 @@ const timerRow: React.CSSProperties     = { textAlign: "center", marginBottom: "
 const timerText: React.CSSProperties    = { fontSize: "0.88rem", color: "#9ca3af", fontWeight: 600 };
 const controls: React.CSSProperties     = { display: "flex", gap: "0.6rem", flexWrap: "wrap" };
 const ctrlBtn: React.CSSProperties      = { flex: 1, padding: "0.65rem", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "white", fontWeight: 600, cursor: "pointer", fontSize: "0.88rem" };
-const nextBtn: React.CSSProperties      = { flex: 2, padding: "0.65rem", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#a855f7,#ec4899)", color: "white", fontWeight: 700, cursor: "pointer", fontSize: "0.9rem" };
+const nextBtn: React.CSSProperties      = { flex: 2, padding: "0.65rem", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#fda4af,#f9a8d4)", color: "white", fontWeight: 700, cursor: "pointer", fontSize: "0.9rem" };
