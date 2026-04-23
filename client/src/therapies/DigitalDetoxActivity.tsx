@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppNavbar from "../components/navbar/AppNavbar";
+import { useAuth } from "../context/AuthContext";
 
 type Props = { activity: { id: number; title: string; duration: number; difficulty: string } };
 
@@ -15,6 +16,7 @@ const STEPS = [
 
 export default function DigitalDetoxActivity({ activity }: Props) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [paused, setPaused] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -30,9 +32,9 @@ export default function DigitalDetoxActivity({ activity }: Props) {
     const pct = Math.round((elapsed / totalSecs) * 100);
     const score = Math.min(10, Math.round(((step + 1) / STEPS.length) * 10));
     const entry = { type: "digital-detox", title: activity.title, average: pct, score, date: new Date().toISOString() };
-    const hist = JSON.parse(localStorage.getItem("mindcare_history") || "[]");
+    const hist = JSON.parse(localStorage.getItem(`mindcare_history_${user?.id}`) || "[]");
     hist.unshift(entry);
-    localStorage.setItem("mindcare_history", JSON.stringify(hist));
+    localStorage.setItem(`mindcare_history_${user?.id}`, JSON.stringify(hist));
     navigate("/activity-result", { state: { activity, score, average: pct } });
   }
 
@@ -105,7 +107,7 @@ const header: React.CSSProperties = { textAlign: "center", marginBottom: "1.5rem
 const heading: React.CSSProperties = { fontSize: "1.3rem", fontWeight: 800, color: "#111827", margin: 0 };
 const subhead: React.CSSProperties = { color: "#6b7280", marginTop: 4 };
 const progressTrack: React.CSSProperties = { height: 8, background: "#e5e7eb", borderRadius: 99, overflow: "hidden" };
-const progressFill: React.CSSProperties  = { height: "100%", background: "linear-gradient(135deg,#6366f1,#a855f7)", borderRadius: 99, transition: "width 0.4s ease" };
+const progressFill: React.CSSProperties  = { height: "100%", background: "linear-gradient(135deg,#fda4af,#f9a8d4)", borderRadius: 99, transition: "width 0.4s ease" };
 const stepCard: React.CSSProperties = { background: "#f9fafb", borderRadius: 16, padding: "1.5rem", marginBottom: "1.5rem", border: "1px solid #f0f0f0" };
 const stepTitle: React.CSSProperties = { fontWeight: 800, fontSize: "1.05rem", color: "#111827", textAlign: "center", margin: "0 0 0.5rem" };
 const stepDesc: React.CSSProperties  = { color: "#6b7280", textAlign: "center", lineHeight: 1.65, margin: 0 };
@@ -113,4 +115,4 @@ const timerRow: React.CSSProperties  = { textAlign: "center", marginBottom: "1.2
 const timerText: React.CSSProperties = { fontSize: "0.88rem", color: "#9ca3af", fontWeight: 600 };
 const controls: React.CSSProperties  = { display: "flex", gap: "0.6rem", flexWrap: "wrap" };
 const ctrlBtn: React.CSSProperties   = { flex: 1, padding: "0.65rem", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "white", fontWeight: 600, cursor: "pointer", fontSize: "0.88rem" };
-const nextBtn: React.CSSProperties   = { flex: 2, padding: "0.65rem", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#6366f1,#a855f7)", color: "white", fontWeight: 700, cursor: "pointer", fontSize: "0.9rem" };
+const nextBtn: React.CSSProperties   = { flex: 2, padding: "0.65rem", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#fda4af,#f9a8d4)", color: "white", fontWeight: 700, cursor: "pointer", fontSize: "0.9rem" };

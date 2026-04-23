@@ -1,230 +1,168 @@
-import React, { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../context/AuthContext";
+import AppLogo from "../components/common/AppLogo";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const from = (location.state as any)?.from?.pathname || "/dashboard";
 
-  const [email, setEmail]           = useState("");
-  const [password, setPassword]     = useState("");
-  const [showPass, setShowPass]     = useState(false);
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState("");
-
-  function validate() {
-    if (!email.trim()) return "Email is required.";
-    if (!/\S+@\S+\.\S+/.test(email)) return "Enter a valid email address.";
-    if (!password) return "Password is required.";
-    if (password.length < 6) return "Password must be at least 6 characters.";
-    return "";
-  }
+  const [email,      setEmail]      = useState("");
+  const [password,   setPassword]   = useState("");
+  const [showPass,   setShowPass]   = useState(false);
+  const [loading,    setLoading]    = useState(false);
+  const [gLoading,   setGLoading]   = useState(false);
+  const [error,      setError]      = useState("");
+  const [unverified, setUnverified] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const err = validate();
-    if (err) { setError(err); return; }
-    setError("");
+    setError(""); setUnverified(null);
+    if (!email || !password) { setError("Both fields are required."); return; }
     setLoading(true);
     try {
-      await login(email, password);
-      navigate(from, { replace: true });
+      await login(email.trim(), password);
+      navigate("/dashboard", { replace: true });
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Invalid email or password.");
-    } finally {
-      setLoading(false);
-    }
+      const data = err?.response?.data;
+      if (data?.unverified) {
+        setUnverified(data.email || email.trim());
+      } else {
+        setError(data?.message || "Login failed. Please check your credentials.");
+      }
+    } finally { setLoading(false); }
+  }
+
+  async function handleGoogleSuccess(response: any) {
+    if (!response?.credential) return;
+    setGLoading(true); setError("");
+    try {
+      await loginWithGoogle(response.credential);
+      navigate("/dashboard", { replace: true });
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Google sign-in failed. Please try again.");
+    } finally { setGLoading(false); }
   }
 
   return (
-    <div style={pageWrap}>
-      <div style={card}>
-        {/* Logo */}
-        <div style={logoRow}>
-          <span style={{ fontSize: 28 }}>🧠</span>
-          <span style={logoText}>MindKare</span>
-        </div>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 relative">
+      {/* Background blobs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-5%] left-[-5%] w-80 h-80 rounded-full bg-rose-200/30 blur-3xl animate-float" />
+        <div className="absolute bottom-[5%] right-[-5%] w-72 h-72 rounded-full bg-pink-200/25 blur-3xl animate-float-2" />
+      </div>
 
-        <h1 style={heading}>Welcome back</h1>
-        <p style={sub}>Log in to continue your wellness journey.</p>
+      <div className="relative z-10 w-full max-w-md animate-fade-in">
+        <div className="glass-card-strong p-8">
 
-        <form onSubmit={handleSubmit} style={form} noValidate>
-          <div>
-            <label style={label}>Email</label>
-            <input
-              id="login-email"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              style={input}
-              autoComplete="email"
-            />
+          {/* Logo */}
+          <div className="mb-7">
+            <AppLogo height={40} />
           </div>
 
-          <div>
-            <label style={label}>Password</label>
-            <div style={{ position: "relative" }}>
-              <input
-                id="login-password"
-                type={showPass ? "text" : "password"}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                style={input}
-                autoComplete="current-password"
-              />
+          <h1 className="text-2xl font-black text-gray-800 mb-1">Welcome back</h1>
+          <p className="text-sm text-gray-500 mb-7">Sign in to continue your wellness journey.</p>
+
+          {/* Unverified email banner */}
+          {unverified && (
+            <div className="bg-amber-50/80 border border-amber-200 text-amber-700 text-sm px-4 py-3 rounded-xl mb-5 animate-fade-in">
+              <p className="font-semibold mb-1">📧 Email not verified</p>
+              <p className="mb-2">Please verify your email before logging in.</p>
               <button
-                type="button"
-                style={showBtn}
-                onClick={() => setShowPass(v => !v)}
+                onClick={() => navigate("/verify-otp", { state: { email: unverified } })}
+                className="text-rose-500 font-bold underline cursor-pointer bg-transparent border-none text-sm p-0"
               >
-                {showPass ? "Hide" : "Show"}
+                Enter verification code →
               </button>
             </div>
+          )}
+
+          {error && (
+            <div className="bg-red-50/70 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl mb-5 animate-fade-in">
+              {error}
+            </div>
+          )}
+
+          {/* Google Sign-In via GoogleLogin component (provides ID token) */}
+          <div className="flex justify-center mb-5">
+            {gLoading ? (
+              <div className="w-full py-3 rounded-2xl border-2 border-white/40 bg-white/50 text-gray-500 text-sm text-center font-semibold">
+                Signing in with Google…
+              </div>
+            ) : (
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError("Google sign-in failed or was cancelled.")}
+                useOneTap={false}
+                theme="outline"
+                size="large"
+                text="continue_with"
+                shape="rectangular"
+                width="400"
+              />
+            )}
           </div>
 
-          {error && <div style={errorBox}>{error}</div>}
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 h-px bg-gray-200/70" />
+            <span className="text-xs text-gray-400 font-medium">or sign in with email</span>
+            <div className="flex-1 h-px bg-gray-200/70" />
+          </div>
 
-          <button
-            id="login-submit"
-            type="submit"
-            style={{ ...submitBtn, opacity: loading ? 0.7 : 1 }}
-            disabled={loading}
-          >
-            {loading ? "Logging in…" : "Login →"}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
+              <input
+                id="login-email"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="glass-input"
+                autoComplete="email"
+              />
+            </div>
 
-        <p style={footer}>
-          Don't have an account?{" "}
-          <Link to="/register" style={link}>Sign up</Link>
-        </p>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
+              <div className="relative">
+                <input
+                  id="login-password"
+                  type={showPass ? "text" : "password"}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  className="glass-input pr-16"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-rose-400 hover:text-rose-600 bg-transparent border-none cursor-pointer"
+                >
+                  {showPass ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
+
+            <button
+              id="login-submit"
+              type="submit"
+              disabled={loading}
+              className="btn-primary py-3 text-sm font-semibold mt-1"
+            >
+              {loading ? "Signing in…" : "Sign In →"}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-gray-500 mt-6">
+            Don't have an account?{" "}
+            <Link to="/register" className="text-rose-500 font-bold no-underline hover:underline">Sign up</Link>
+          </p>
+        </div>
       </div>
     </div>
   );
 }
-
-/* ── Styles ── */
-const pageWrap: React.CSSProperties = {
-  minHeight: "100vh",
-  background: "linear-gradient(135deg, #f0f4ff 0%, #fdf4ff 100%)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "1.5rem",
-};
-
-const card: React.CSSProperties = {
-  width: "100%",
-  maxWidth: 440,
-  background: "white",
-  borderRadius: 24,
-  padding: "2.5rem 2rem",
-  boxShadow: "0 24px 70px rgba(99,102,241,0.13)",
-};
-
-const logoRow: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "0.5rem",
-  marginBottom: "1.5rem",
-};
-
-const logoText: React.CSSProperties = {
-  fontWeight: 800,
-  fontSize: "1.2rem",
-  background: "linear-gradient(135deg,#6366f1,#a855f7)",
-  WebkitBackgroundClip: "text",
-  WebkitTextFillColor: "transparent",
-};
-
-const heading: React.CSSProperties = {
-  fontSize: "1.65rem",
-  fontWeight: 800,
-  color: "#111827",
-  margin: "0 0 6px",
-};
-
-const sub: React.CSSProperties = {
-  color: "#6b7280",
-  fontSize: "0.95rem",
-  marginBottom: "1.75rem",
-};
-
-const form: React.CSSProperties = {
-  display: "grid",
-  gap: "1.1rem",
-};
-
-const label: React.CSSProperties = {
-  display: "block",
-  fontSize: "0.85rem",
-  fontWeight: 600,
-  color: "#374151",
-  marginBottom: "0.35rem",
-};
-
-const input: React.CSSProperties = {
-  width: "100%",
-  padding: "0.7rem 0.9rem",
-  borderRadius: 10,
-  border: "1.5px solid #e5e7eb",
-  fontSize: "0.95rem",
-  fontFamily: "inherit",
-  boxSizing: "border-box",
-  transition: "border-color 0.15s",
-};
-
-const showBtn: React.CSSProperties = {
-  position: "absolute",
-  right: "0.75rem",
-  top: "50%",
-  transform: "translateY(-50%)",
-  background: "none",
-  border: "none",
-  color: "#6366f1",
-  fontWeight: 600,
-  fontSize: "0.82rem",
-  cursor: "pointer",
-  padding: 0,
-};
-
-const errorBox: React.CSSProperties = {
-  background: "#fef2f2",
-  color: "#dc2626",
-  border: "1px solid #fecaca",
-  borderRadius: 10,
-  padding: "0.65rem 0.9rem",
-  fontSize: "0.88rem",
-  fontWeight: 500,
-};
-
-const submitBtn: React.CSSProperties = {
-  width: "100%",
-  padding: "0.8rem",
-  background: "linear-gradient(135deg,#6366f1,#a855f7)",
-  color: "white",
-  border: "none",
-  borderRadius: 12,
-  fontWeight: 700,
-  fontSize: "1rem",
-  cursor: "pointer",
-  transition: "opacity 0.2s, transform 0.15s",
-  marginTop: "0.25rem",
-};
-
-const footer: React.CSSProperties = {
-  textAlign: "center",
-  marginTop: "1.25rem",
-  fontSize: "0.9rem",
-  color: "#6b7280",
-};
-
-const link: React.CSSProperties = {
-  color: "#6366f1",
-  fontWeight: 700,
-  textDecoration: "none",
-};

@@ -1,303 +1,251 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import AppNavbar from "../components/navbar/AppNavbar";
 import { getMoods, addMood, deleteMood, updateMood, MoodEntry } from "../services/moodApi";
 
 const MOODS = ["Happy", "Calm", "Neutral", "Sad", "Stressed"];
 
-const MOOD_FEEDBACK: Record<string, string> = {
-  Happy:    "😊 Amazing! Your happiness is contagious. Keep riding this wave!",
-  Calm:     "😌 That calm energy is beautiful. Carry it with you today.",
-  Neutral:  "😐 Feeling neutral is okay. You're steady — and that's strength.",
-  Sad:      "😔 It's okay to feel sad. You're not alone. Be gentle with yourself today.",
-  Stressed: "😰 Take a breath. Stress is temporary. Try a breathing activity to find calm.",
+const MOOD_FEEDBACK: Record<string,string> = {
+  Happy:    "Amazing! Your happiness is contagious. Keep riding this wave!",
+  Calm:     "That calm energy is beautiful. Carry it with you today.",
+  Neutral:  "Feeling neutral is okay. You're steady — and that's strength.",
+  Sad:      "It's okay to feel sad. You're not alone. Be gentle with yourself today.",
+  Stressed: "Take a breath. Stress is temporary. Try a breathing activity to find calm.",
 };
 
-
-const MOOD_COLOR: Record<string, string> = {
-  Happy: "#22c55e",
-  Calm: "#3b82f6",
-  Neutral: "#a3a3a3",
-  Sad: "#6366f1",
-  Stressed: "#ef4444",
+const MOOD_COLOR: Record<string,string> = {
+  Happy:"#22c55e", Calm:"#3b82f6", Neutral:"#a3a3a3", Sad:"#6366f1", Stressed:"#ef4444",
 };
 
-const MOOD_EMOJI: Record<string, string> = {
-  Happy: "😊",
-  Calm: "😌",
-  Neutral: "😐",
-  Sad: "😔",
-  Stressed: "😰",
+const MOOD_EMOJI: Record<string,string> = {
+  Happy:"😊", Calm:"😌", Neutral:"😐", Sad:"😔", Stressed:"😰",
+};
+
+// Different animation per mood to make it feel alive
+const MOOD_ANIM: Record<string,string> = {
+  Happy:"emoji-bounce", Calm:"emoji-pulse", Neutral:"",
+  Sad:"emoji-wiggle", Stressed:"emoji-pulse",
 };
 
 export default function MoodPage() {
-  const [moods, setMoods]           = useState<MoodEntry[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [saving, setSaving]         = useState(false);
-  const [editId, setEditId]         = useState<number | null>(null);
-  const [editMood, setEditMood]     = useState("Happy");
-  const [editIntensity, setEditInt] = useState(3);
-  const [editNote, setEditNote]     = useState("");
-  const [search, setSearch]         = useState("");
-  const [filter, setFilter]         = useState<"week" | "month">("week");
-  const [selectedMood, setSelMood]  = useState("Happy");
-  const [intensity, setIntensity]   = useState(3);
-  const [note, setNote]             = useState("");
-  const [toast, setToast]           = useState("");
+  const [moods,         setMoods]    = useState<MoodEntry[]>([]);
+  const [loading,       setLoading]  = useState(true);
+  const [saving,        setSaving]   = useState(false);
+  const [editId,        setEditId]   = useState<number|null>(null);
+  const [editMood,      setEditMood] = useState("Happy");
+  const [editIntensity, setEditInt]  = useState(3);
+  const [editNote,      setEditNote] = useState("");
+  const [search,        setSearch]   = useState("");
+  const [filter,        setFilter]   = useState<"week"|"month">("week");
+  const [selectedMood,  setSelMood]  = useState("Happy");
+  const [intensity,     setIntensity]= useState(3);
+  const [note,          setNote]     = useState("");
+  const [toast,         setToast]    = useState("");
 
-  // ── Load from API ──
-  useEffect(() => {
-    getMoods()
-      .then(setMoods)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  useEffect(() => { getMoods().then(setMoods).catch(()=>{}).finally(()=>setLoading(false)); },[]);
 
-  // ── Create ──
   async function handleSave() {
     if (saving) return;
     setSaving(true);
     try {
-      const entry = await addMood({ mood: selectedMood, intensity, note });
-      setMoods(prev => [entry, ...prev]);
-      setNote("");
-      setIntensity(3);
-      // Show mood-specific popup
-      setToast(MOOD_FEEDBACK[selectedMood] || "Mood logged!");
-      setTimeout(() => setToast(""), 4000);
-    } catch {
-      alert("Failed to save mood. Please try again.");
-    } finally {
-      setSaving(false);
-    }
+      const entry = await addMood({ mood:selectedMood, intensity, note });
+      setMoods(prev=>[entry,...prev]);
+      setNote(""); setIntensity(3);
+      setToast(MOOD_FEEDBACK[selectedMood]||"Mood logged!");
+      setTimeout(()=>setToast(""),4000);
+    } catch { alert("Failed to save mood. Please try again."); }
+    finally { setSaving(false); }
   }
 
-  // ── Delete ──
-  async function handleDelete(id: number) {
-    await deleteMood(id);
-    setMoods(prev => prev.filter(m => m.id !== id));
-  }
+  async function handleDelete(id:number) { await deleteMood(id); setMoods(prev=>prev.filter(m=>m.id!==id)); }
 
-  // ── Update ──
   async function handleUpdate() {
-    if (editId === null) return;
-    const updated = await updateMood(editId, { mood: editMood, intensity: editIntensity, note: editNote });
-    setMoods(prev => prev.map(m => m.id === editId ? updated : m));
+    if (editId===null) return;
+    const updated = await updateMood(editId,{mood:editMood,intensity:editIntensity,note:editNote});
+    setMoods(prev=>prev.map(m=>m.id===editId?updated:m));
     setEditId(null);
   }
 
-  // ── Filter + search ──
-  const filtered = useMemo(() => {
-    const days = filter === "week" ? 7 : 30;
-    const cutoff = new Date(Date.now() - days * 86400000);
-    return moods.filter(m => new Date(m.created_at) >= cutoff);
-  }, [moods, filter]);
+  const filtered = useMemo(()=>{
+    const days=filter==="week"?7:30;
+    const cutoff=new Date(Date.now()-days*86400000);
+    return moods.filter(m=>new Date(m.created_at)>=cutoff);
+  },[moods,filter]);
 
-  const searched = useMemo(() => {
-    const s = search.toLowerCase();
-    return filtered.filter(m =>
-      m.mood.toLowerCase().includes(s) ||
-      (m.note || "").toLowerCase().includes(s)
-    );
-  }, [filtered, search]);
+  const searched = useMemo(()=>{
+    const s=search.toLowerCase();
+    return filtered.filter(m=>m.mood.toLowerCase().includes(s)||(m.note||"").toLowerCase().includes(s));
+  },[filtered,search]);
 
-  const chartData = useMemo(() =>
-    searched.slice().reverse().map(m => ({
-      date: new Date(m.created_at).toLocaleDateString("en", { month: "short", day: "numeric" }),
-      intensity: m.intensity,
-      mood: m.mood,
-    })), [searched]);
+  const chartData = useMemo(()=>
+    searched.slice().reverse().map(m=>({
+      date:new Date(m.created_at).toLocaleDateString("en",{month:"short",day:"numeric"}),
+      intensity:m.intensity, mood:m.mood,
+    })),[searched]);
+
+  const pillCls = (active:boolean) =>
+    `px-4 py-1.5 rounded-full text-xs font-semibold border cursor-pointer transition-all
+     ${active ? "bg-gradient-to-r from-rose-300 to-pink-300 text-white border-transparent shadow-sm"
+              : "bg-white/40 border-rose-100/60 text-gray-600 hover:bg-white/60"}`;
 
   return (
-    <div style={page}>
+    <div className="min-h-screen">
       <AppNavbar />
 
-      {/* Toast popup */}
+      {/* Toast */}
       {toast && (
-        <div className="toast-enter" style={{
-          position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)",
-          background: "white", borderRadius: 16, padding: "1rem 1.5rem",
-          boxShadow: "0 12px 40px rgba(0,0,0,0.15)", zIndex: 999,
-          fontWeight: 700, fontSize: "0.95rem", color: "#111827",
-          border: "1.5px solid #e5e7eb", whiteSpace: "nowrap",
-          maxWidth: "90vw", textAlign: "center",
-        }}>
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-card-strong px-6 py-3 z-50 font-semibold text-gray-700 text-sm whitespace-nowrap animate-fade-in">
           {toast}
         </div>
       )}
 
-      <div style={container}>
-        {/* Header */}
-        <div style={header}>
-          <h1 style={title}>💭 Mood Tracker</h1>
-          <p style={subtitle}>Log how you're feeling and track patterns over time.</p>
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 flex flex-col gap-6">
+        <div>
+          <h1 className="text-3xl font-black text-gray-800">Mood Tracker</h1>
+          <p className="text-gray-500 mt-1">Log how you're feeling and track patterns over time.</p>
         </div>
 
-        <div style={twoCol}>
-          {/* ── Log Mood ── */}
-          <div style={card}>
-            <h2 style={cardTitle}>Log Your Mood</h2>
-            <p style={cardSub}>How are you feeling right now?</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Log Mood */}
+          <div className="glass-card p-6">
+            <h2 className="font-bold text-gray-800 mb-1">How are you feeling?</h2>
+            <p className="text-xs text-gray-400 mb-5">Select a mood and log how intense it feels</p>
 
-            {/* Mood selector */}
-            <div style={moodGrid}>
+            {/* Mood grid — large animated emojis */}
+            <div className="grid grid-cols-5 gap-2 mb-5">
               {MOODS.map(m => (
                 <button
                   key={m}
-                  style={{
-                    ...moodBtn,
-                    background: selectedMood === m ? MOOD_COLOR[m] + "18" : "white",
-                    borderColor: selectedMood === m ? MOOD_COLOR[m] : "#e5e7eb",
-                    borderWidth: selectedMood === m ? 2.5 : 1.5,
-                    boxShadow: selectedMood === m ? `0 4px 16px ${MOOD_COLOR[m]}30` : "none",
-                    transform: selectedMood === m ? "scale(1.05)" : "scale(1)",
-                    transition: "all 0.2s ease",
-                  }}
                   onClick={() => setSelMood(m)}
+                  className={`flex flex-col items-center gap-1.5 py-3.5 rounded-2xl border-2 cursor-pointer transition-all duration-200
+                    ${selectedMood===m
+                      ? "border-rose-300 bg-rose-50/60 shadow-md scale-105"
+                      : "border-white/40 bg-white/25 hover:bg-white/45 hover:border-rose-100"}`}
                 >
-                  <span className="emoji-hover" style={{ fontSize: 28 }}>{MOOD_EMOJI[m]}</span>
-                  <span style={{ fontSize: "0.8rem", fontWeight: selectedMood === m ? 700 : 500, color: selectedMood === m ? MOOD_COLOR[m] : "#6b7280" }}>{m}</span>
+                  <span className={`text-3xl ${MOOD_ANIM[m]}`}>{MOOD_EMOJI[m]}</span>
+                  <span className={`text-xs font-semibold ${selectedMood===m?"text-rose-600":"text-gray-500"}`}>{m}</span>
                 </button>
               ))}
             </div>
 
             {/* Intensity */}
-            <div style={{ marginTop: "1.25rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.4rem" }}>
-                <label style={inputLabel}>Intensity</label>
-                <span style={{ fontWeight: 700, color: "#6366f1", fontSize: "0.95rem" }}>{intensity}/5</span>
+            <div className="mb-4">
+              <div className="flex justify-between mb-1.5">
+                <label className="text-sm font-semibold text-gray-700">Intensity</label>
+                <span className="text-sm font-bold gradient-text">{intensity}/5</span>
               </div>
-              <input
-                type="range" min={1} max={5} value={intensity}
-                onChange={e => setIntensity(Number(e.target.value))}
-                style={{ width: "100%", accentColor: "#6366f1" }}
-              />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "#9ca3af" }}>
-                <span>Low</span><span>High</span>
-              </div>
+              <input type="range" min={1} max={5} value={intensity} onChange={e=>setIntensity(Number(e.target.value))} className="w-full"/>
+              <div className="flex justify-between text-xs text-gray-400 mt-0.5"><span>Low</span><span>High</span></div>
             </div>
 
             {/* Note */}
-            <div style={{ marginTop: "1rem" }}>
-              <label style={inputLabel}>Note (optional)</label>
-              <textarea
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                placeholder="What's on your mind?"
-                rows={3}
-                style={textarea}
-              />
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Note <span className="text-gray-400 font-normal">(optional)</span></label>
+              <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="What's on your mind?" rows={3} className="glass-input resize-none text-sm"/>
             </div>
 
-            <button
-              style={{ ...saveBtn, opacity: saving ? 0.6 : 1 }}
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? "Saving…" : "Save Mood ✓"}
+            <button onClick={handleSave} disabled={saving} className="btn-primary w-full py-2.5 text-sm">
+              {saving ? "Saving…" : "Save Mood"}
             </button>
           </div>
 
-          {/* ── Trend Chart ── */}
-          <div style={card}>
-            <h2 style={cardTitle}>Mood Trend</h2>
-            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-              {(["week", "month"] as const).map(f => (
-                <button
-                  key={f}
-                  style={{ ...filterBtn, ...(filter === f ? filterBtnActive : {}) }}
-                  onClick={() => setFilter(f)}
-                >
-                  {f === "week" ? "Last 7 days" : "Last 30 days"}
-                </button>
-              ))}
+          {/* Trend Chart */}
+          <div className="glass-card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-gray-800">Mood Trend</h2>
+              <div className="flex gap-2">
+                {(["week","month"] as const).map(f=>(
+                  <button key={f} onClick={()=>setFilter(f)} className={pillCls(filter===f)}>
+                    {f==="week"?"7 days":"30 days"}
+                  </button>
+                ))}
+              </div>
             </div>
-            {chartData.length > 0 ? (
-              <div style={{ height: 220 }}>
+            {chartData.length>0 ? (
+              <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                    <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11 }} />
-                    <Tooltip
-                      formatter={(val: any, _: any, entry: any) => [`${val} (${entry.payload.mood})`, "Intensity"]}
-                    />
-                    <Line type="monotone" dataKey="intensity" stroke="#6366f1" strokeWidth={3} dot={{ r: 5, fill: "#6366f1" }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,200,210,0.4)"/>
+                    <XAxis dataKey="date" tick={{fontSize:10,fill:"#9ca3af"}}/>
+                    <YAxis domain={[1,5]} ticks={[1,2,3,4,5]} tick={{fontSize:10,fill:"#9ca3af"}}/>
+                    <Tooltip formatter={(val:any,_:any,e:any)=>[`${val}/5 (${e.payload.mood})`,"Intensity"]} contentStyle={{borderRadius:12,background:"rgba(255,255,255,0.92)",border:"1px solid rgba(255,210,215,0.5)",fontSize:12}}/>
+                    <Line type="monotone" dataKey="intensity" stroke="url(#moodGradWarm)" strokeWidth={3} dot={{r:5,fill:"#fda4af"}} activeDot={{r:7}}/>
+                    <defs>
+                      <linearGradient id="moodGradWarm" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#fda4af"/>
+                        <stop offset="100%" stopColor="#fdba74"/>
+                      </linearGradient>
+                    </defs>
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", flexDirection: "column", gap: "0.5rem" }}>
-                <span style={{ fontSize: 36 }}>📈</span>
-                <p style={{ fontSize: "0.9rem" }}>No data in this period yet.</p>
+              <div className="h-52 flex flex-col items-center justify-center text-gray-400 gap-2">
+                <span className="text-5xl emoji-pulse">📈</span>
+                <p className="text-sm text-center">Log a few moods to see your trend here</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* ── History ── */}
-        <div style={card}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1.25rem" }}>
-            <h2 style={{ ...cardTitle, margin: 0 }}>Mood History</h2>
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search mood or note…"
-              style={searchInput}
-            />
+        {/* History */}
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+            <h2 className="font-bold text-gray-800">Mood History</h2>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search mood or note…" className="glass-input text-sm w-52"/>
           </div>
 
           {loading ? (
-            <div style={{ textAlign: "center", color: "#9ca3af", padding: "2rem" }}>Loading…</div>
-          ) : searched.length === 0 ? (
-            <div style={emptyState}>
-              <div style={{ fontSize: 40 }}>😶</div>
-              <p>No mood entries found. Start logging to see them here!</p>
+            <div className="text-center text-gray-400 py-8">Loading…</div>
+          ) : searched.length===0 ? (
+            <div className="text-center py-10 flex flex-col items-center gap-2 text-gray-400">
+              <span className="text-5xl emoji-bounce">😶</span>
+              <p className="text-sm">No mood entries yet. Start logging to see them here!</p>
             </div>
           ) : (
-            <div style={{ display: "grid", gap: "0.75rem" }}>
-              {searched.map(m => (
-                <div key={m.id} style={{ ...entryCard, borderLeft: `4px solid ${MOOD_COLOR[m.mood] || "#a3a3a3"}` }}>
-                  {editId === m.id ? (
-                    /* ── Inline Edit Form ── */
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
-                        {MOODS.map(mo => (
-                          <button key={mo} style={{ ...filterBtn, ...(editMood === mo ? filterBtnActive : {}) }} onClick={() => setEditMood(mo)}>
+            <div className="flex flex-col gap-3">
+              {searched.map(m=>(
+                <div key={m.id}
+                  className="bg-white/35 backdrop-blur-sm rounded-2xl p-4 border-l-4 hover:bg-white/50 transition-all"
+                  style={{borderColor:MOOD_COLOR[m.mood]||"#a3a3a3"}}>
+                  {editId===m.id ? (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex gap-2 flex-wrap">
+                        {MOODS.map(mo=>(
+                          <button key={mo} onClick={()=>setEditMood(mo)}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer border transition-all ${editMood===mo?"bg-rose-100 text-rose-600 border-rose-200":"bg-white/40 border-white/30 text-gray-600"}`}>
                             {MOOD_EMOJI[mo]} {mo}
                           </button>
                         ))}
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
-                        <label style={{ fontSize: "0.82rem", color: "#6b7280", fontWeight: 600 }}>Intensity: {editIntensity}</label>
-                        <input type="range" min={1} max={5} value={editIntensity} onChange={e => setEditInt(Number(e.target.value))} style={{ flex: 1, accentColor: "#6366f1" }} />
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs text-gray-500 font-semibold whitespace-nowrap">Intensity: {editIntensity}</label>
+                        <input type="range" min={1} max={5} value={editIntensity} onChange={e=>setEditInt(Number(e.target.value))} className="flex-1"/>
                       </div>
-                      <input value={editNote} onChange={e => setEditNote(e.target.value)} placeholder="Note…" style={{ ...searchInput, width: "100%", marginBottom: "0.5rem" }} />
-                      <div style={{ display: "flex", gap: "0.5rem" }}>
-                        <button style={{ ...filterBtn, ...filterBtnActive }} onClick={handleUpdate}>Save</button>
-                        <button style={filterBtn} onClick={() => setEditId(null)}>Cancel</button>
+                      <input value={editNote} onChange={e=>setEditNote(e.target.value)} placeholder="Note…" className="glass-input text-sm"/>
+                      <div className="flex gap-2">
+                        <button onClick={handleUpdate} className="btn-primary text-xs px-4 py-1.5">Save</button>
+                        <button onClick={()=>setEditId(null)} className="btn-secondary text-xs px-4 py-1.5">Cancel</button>
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                        <span style={{ fontSize: 24 }}>{MOOD_EMOJI[m.mood] || "😶"}</span>
-                        <div>
-                          <div style={{ fontWeight: 700, color: "#111827" }}>{m.mood}</div>
-                          <div style={{ fontSize: "0.8rem", color: "#9ca3af" }}>{new Date(m.created_at).toLocaleString()}</div>
+                    <div className="flex items-start gap-4">
+                      <span className={`text-3xl shrink-0 ${MOOD_ANIM[m.mood]}`}>{MOOD_EMOJI[m.mood]}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-bold text-gray-800 text-sm">{m.mood}</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-white/50 text-gray-500 border border-white/30">intensity {m.intensity}/5</span>
                         </div>
+                        {m.note && <p className="text-xs text-gray-500 truncate">{m.note}</p>}
+                        <p className="text-xs text-gray-400 mt-0.5">{new Date(m.created_at).toLocaleString()}</p>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginLeft: "auto" }}>
-                        <div style={{ ...intensityBadge, background: MOOD_COLOR[m.mood] + "18", color: MOOD_COLOR[m.mood] }}>
-                          {m.intensity}/5
-                        </div>
-                        {m.note && <span style={noteBadge}>{m.note}</span>}
-                        <button style={iconBtn} onClick={() => { setEditId(m.id); setEditMood(m.mood); setEditInt(m.intensity); setEditNote(m.note || ""); }}>✏️</button>
-                        <button style={{ ...iconBtn, color: "#ef4444" }} onClick={() => handleDelete(m.id)}>🗑️</button>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={()=>{setEditId(m.id);setEditMood(m.mood);setEditInt(m.intensity);setEditNote(m.note||"");}}
+                          className="text-xs px-2.5 py-1 rounded-full bg-white/40 text-gray-600 hover:bg-white/60 border border-white/30">✏️</button>
+                        <button onClick={()=>handleDelete(m.id)}
+                          className="text-xs px-2.5 py-1 rounded-full bg-red-50/60 text-red-400 hover:bg-red-50 border border-red-100/50">🗑</button>
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               ))}
@@ -308,162 +256,3 @@ export default function MoodPage() {
     </div>
   );
 }
-
-/* ── Styles ── */
-const page: React.CSSProperties = { minHeight: "100vh", background: "#f8fafc" };
-
-const container: React.CSSProperties = {
-  maxWidth: 1100,
-  margin: "0 auto",
-  padding: "2rem 1.5rem",
-  display: "grid",
-  gap: "1.5rem",
-};
-
-const header: React.CSSProperties = {};
-const title: React.CSSProperties = { fontSize: "1.75rem", fontWeight: 800, color: "#111827", margin: 0 };
-const subtitle: React.CSSProperties = { color: "#6b7280", marginTop: 6 };
-
-const twoCol: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-  gap: "1.25rem",
-};
-
-const card: React.CSSProperties = {
-  background: "white",
-  borderRadius: 20,
-  padding: "1.75rem",
-  boxShadow: "0 4px 16px rgba(0,0,0,0.05)",
-};
-
-const cardTitle: React.CSSProperties = { fontSize: "1.05rem", fontWeight: 700, color: "#111827", margin: "0 0 4px" };
-const cardSub: React.CSSProperties = { fontSize: "0.83rem", color: "#6b7280", marginBottom: "1.25rem" };
-
-const moodGrid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(5, 1fr)",
-  gap: "0.5rem",
-};
-
-const moodBtn: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "0.3rem",
-  padding: "0.65rem 0.25rem",
-  borderRadius: 12,
-  border: "2px solid #e5e7eb",
-  background: "#f9fafb",
-  cursor: "pointer",
-  transition: "all 0.15s",
-};
-
-const moodBtnActive: React.CSSProperties = {
-  border: "2px solid #6366f1",
-};
-
-const inputLabel: React.CSSProperties = {
-  fontSize: "0.85rem",
-  fontWeight: 600,
-  color: "#374151",
-  display: "block",
-  marginBottom: "0.35rem",
-};
-
-const textarea: React.CSSProperties = {
-  width: "100%",
-  borderRadius: 10,
-  border: "1.5px solid #e5e7eb",
-  padding: "0.65rem 0.85rem",
-  fontSize: "0.92rem",
-  resize: "vertical",
-  fontFamily: "inherit",
-};
-
-const saveBtn: React.CSSProperties = {
-  marginTop: "1.25rem",
-  width: "100%",
-  padding: "0.8rem",
-  background: "linear-gradient(135deg,#6366f1,#a855f7)",
-  color: "white",
-  border: "none",
-  borderRadius: 12,
-  fontWeight: 700,
-  fontSize: "0.95rem",
-  cursor: "pointer",
-  transition: "opacity 0.2s",
-};
-
-const filterBtn: React.CSSProperties = {
-  padding: "0.4rem 0.9rem",
-  borderRadius: 8,
-  border: "1.5px solid #e5e7eb",
-  background: "white",
-  fontSize: "0.82rem",
-  fontWeight: 500,
-  color: "#6b7280",
-  cursor: "pointer",
-};
-
-const filterBtnActive: React.CSSProperties = {
-  background: "#eef2ff",
-  borderColor: "#6366f1",
-  color: "#4338ca",
-  fontWeight: 700,
-};
-
-const searchInput: React.CSSProperties = {
-  padding: "0.55rem 0.9rem",
-  borderRadius: 10,
-  border: "1.5px solid #e5e7eb",
-  fontSize: "0.88rem",
-  width: "220px",
-};
-
-const entryCard: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "1rem",
-  padding: "1rem 1.25rem",
-  background: "#fafafa",
-  borderRadius: 14,
-  border: "1px solid #f0f0f0",
-  flexWrap: "wrap",
-};
-
-const intensityBadge: React.CSSProperties = {
-  padding: "0.3rem 0.65rem",
-  borderRadius: 99,
-  fontSize: "0.78rem",
-  fontWeight: 700,
-  whiteSpace: "nowrap",
-};
-
-const noteBadge: React.CSSProperties = {
-  fontSize: "0.8rem",
-  color: "#6b7280",
-  maxWidth: 160,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
-
-const iconBtn: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  cursor: "pointer",
-  fontSize: "1rem",
-  padding: "0.25rem",
-};
-
-const emptyState: React.CSSProperties = {
-  textAlign: "center",
-  padding: "3rem",
-  color: "#9ca3af",
-  fontSize: "0.9rem",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "0.5rem",
-};

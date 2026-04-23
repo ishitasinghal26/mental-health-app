@@ -5,6 +5,7 @@ import { useAuth } from "./context/AuthContext";
 import LandingPage          from "./pages/LandingPage";
 import LoginPage            from "./pages/LoginPage";
 import RegisterPage         from "./pages/RegisterPage";
+import OtpVerifyPage        from "./pages/OtpVerifyPage";
 import DashboardPage        from "./pages/DashboardPage";
 import MoodPage             from "./pages/MoodPage";
 import JournalPage          from "./pages/JournalPage";
@@ -68,6 +69,7 @@ function AppRoutes() {
       <Route path="/"          element={<LandingPage />} />
       <Route path="/login"     element={<LoginPage />} />
       <Route path="/register"  element={<RegisterPage />} />
+      <Route path="/verify-otp" element={<OtpVerifyPage />} />
 
       {/* Onboarding flow */}
       <Route path="/assessment" element={<AssessmentRoute><DassAssessmentPage /></AssessmentRoute>} />

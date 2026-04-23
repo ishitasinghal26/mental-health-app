@@ -6,11 +6,22 @@ CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   email VARCHAR(100) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,
+  password VARCHAR(255),
+  provider VARCHAR(20) DEFAULT 'local',
+  is_verified BOOLEAN DEFAULT FALSE,
+  otp_code VARCHAR(6),
+  otp_expires_at TIMESTAMP,
   dass_completed BOOLEAN DEFAULT FALSE,
   ai_consent BOOLEAN DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Run these to migrate existing databases:
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS provider VARCHAR(20) DEFAULT 'local';
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_code VARCHAR(6);
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires_at TIMESTAMP;
+-- UPDATE users SET is_verified = TRUE WHERE provider IS NULL OR provider = 'local';
 
 CREATE TABLE IF NOT EXISTS assessments (
   id SERIAL PRIMARY KEY,
