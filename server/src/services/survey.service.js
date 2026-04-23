@@ -20,4 +20,4 @@ function processSurvey(data) {
 
 module.exports = {
   processSurvey,
-};
+};
