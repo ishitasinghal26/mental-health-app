@@ -97,6 +97,7 @@ The system follows a three-tier architecture:
 
 ## Project Structure
 
+```
 mental-health-app/
 │
 ├── client/        # Frontend (React)
@@ -107,32 +108,39 @@ mental-health-app/
 │   ├── utils/
 │
 └── README.md
-
+```
 
 ---
-
 ## Setup Instructions
 
 ### 1. Clone the repository
 ```bash
-git clone <https://github.com/ishitasinghal26/mental-health-app>
+git clone https://github.com/ishitasinghal26/mental-health-app
 cd mental-health-app
-2.Install dependencies
+```
+
+### 2. Install dependencies
+```bash
 cd server
 npm install
 
 cd ../client
 npm install
+```
 
-3.Run the application
-Backend
+### 3. Run the application
 
+**Backend**
+```bash
 cd server
 npm run dev
+```
 
-Frontend
+**Frontend**
+```bash
 cd client
 npm run dev
+```
 
 Notes
 
